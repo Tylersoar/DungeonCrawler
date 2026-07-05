@@ -31,6 +31,14 @@ def construct_map(rows, cols):
 
     return arr
 
+def find_player(grid, rows, cols):
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 'P':
+                return (r, c)
+    return None, None
+
+
 
 def main():
     pygame.init()
