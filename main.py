@@ -66,12 +66,10 @@ def main():
     running = True
     while running:
         # 1. Handles events (Quitting & Input)
-        # 1. Handles events (Quitting & Input)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-            # --- NEW MOVEMENT LOGIC ---
             elif event.type == pygame.KEYDOWN:
                 # Find current player coordinates in the array
                 pr, pc = find_player(my_map, rows, cols)
