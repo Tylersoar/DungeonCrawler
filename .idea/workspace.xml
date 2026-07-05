@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="added map rendering through pygame" />
+    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="Added find_player function which returns players coordinates">
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -79,7 +81,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1783263889350</updated>
-      <workItem from="1783263890373" duration="2599000" />
+      <workItem from="1783263890373" duration="3072000" />
     </task>
     <task id="LOCAL-00001" summary="added 2D array mapping walls and exit">
       <option name="closed" value="true" />
@@ -105,7 +107,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783266491080</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Added find_player function which returns players coordinates">
+      <option name="closed" value="true" />
+      <created>1783266806447</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1783266806447</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -114,10 +124,11 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="added 2D array mapping walls and exit" />
     <MESSAGE value="added map rendering through pygame" />
-    <option name="LAST_COMMIT_MESSAGE" value="added map rendering through pygame" />
+    <MESSAGE value="Added find_player function which returns players coordinates" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added find_player function which returns players coordinates" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783266509490" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783266985214" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>

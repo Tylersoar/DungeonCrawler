@@ -35,7 +35,7 @@ def find_player(grid, rows, cols):
     for r in range(rows):
         for c in range(cols):
             if grid[r][c] == 'P':
-                return (r, c)
+                return r, c
     return None, None
 
 
@@ -66,9 +66,39 @@ def main():
     running = True
     while running:
         # 1. Handles events (Quitting & Input)
+        # 1. Handles events (Quitting & Input)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
+            # --- NEW MOVEMENT LOGIC ---
+            elif event.type == pygame.KEYDOWN:
+                # Find current player coordinates in the array
+                pr, pc = find_player(my_map, rows, cols)
+
+                if pr is not None and pc is not None:
+                    # Default target coordinates to current position
+                    target_r, target_c = pr, pc
+
+                    # Calculate intended target based on key press
+                    if event.key == pygame.K_UP:
+                        target_r -= 1
+                    elif event.key == pygame.K_DOWN:
+                        target_r += 1
+                    elif event.key == pygame.K_LEFT:
+                        target_c -= 1
+                    elif event.key == pygame.K_RIGHT:
+                        target_c += 1
+
+                    if my_map[target_r][target_c] != '#':
+
+                        # Bonus: Did we hit the exit?
+                        if my_map[target_r][target_c] == 'E':
+                            print("Success! You reached the stairs.")
+                            # For now, we'll just let the player walk over it
+
+                        my_map[pr][pc] = '.'
+                        my_map[target_r][target_c] = 'P'
 
         # 2. Clears the screen
         screen.fill((0, 0, 0))
@@ -79,7 +109,6 @@ def main():
                 tile_type = my_map[r][c]
                 color = COLORS.get(tile_type, (255, 0, 255))
 
-                # FIX: X coordinate is (c * TILE_SIZE), Y coordinate is (r * TILE_SIZE)
                 rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
                 pygame.draw.rect(screen, color, rect)
