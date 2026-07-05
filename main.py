@@ -1,8 +1,13 @@
 import random
+import pygame
+import sys
 
+small_map = 5,5
+medium_map = 15,15
+large_map = 30,30
 
 def construct_map(rows, cols):
-    arr = [['P' for _ in range(cols)] for _ in range(rows)]
+    arr = [['.' for _ in range(cols)] for _ in range(rows)]
     valid_exit_borders = []
 
     for r in range(rows):
@@ -22,9 +27,63 @@ def construct_map(rows, cols):
         exit_r, exit_c = random.choice(valid_exit_borders)
         arr[exit_r][exit_c] = 'E'
 
+    arr[1][1] = 'P'
+
     return arr
 
 
-my_map = construct_map(6, 6)
-for row in my_map:
-    print(row)
+def main():
+    pygame.init()
+
+    # settings
+    TILE_SIZE = 25
+    rows, cols = medium_map
+    my_map = construct_map(rows, cols)
+
+    # Set up the display
+    screen_width = cols * TILE_SIZE
+    screen_height = rows * TILE_SIZE
+    screen = pygame.display.set_mode((screen_width, screen_height))
+    pygame.display.set_caption('Dungeon Crawler')
+
+    # colour dictionary
+    COLORS = {
+        '#': (100, 100, 100),  # Wall - Grey
+        '.': (30, 30, 30),  # Floor - Dark Grey
+        'P': (0, 255, 0),  # Player - Green
+        'E': (255, 215, 0)  # Exit - Gold
+    }
+
+    # Main game loop
+    running = True
+    while running:
+        # 1. Handles events (Quitting & Input)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # 2. Clears the screen
+        screen.fill((0, 0, 0))
+
+        # 3. Draws the map
+        for r in range(rows):
+            for c in range(cols):
+                tile_type = my_map[r][c]
+                color = COLORS.get(tile_type, (255, 0, 255))
+
+                # FIX: X coordinate is (c * TILE_SIZE), Y coordinate is (r * TILE_SIZE)
+                rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+
+                pygame.draw.rect(screen, color, rect)
+                pygame.draw.rect(screen, (50, 50, 50), rect, 1)
+
+        # 4. Updates the display
+        pygame.display.flip()
+
+    pygame.quit()
+    sys.exit()
+
+
+
+if __name__ == '__main__':
+    main()
