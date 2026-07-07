@@ -1,6 +1,7 @@
 import random
 import pygame
 import sys
+import heapq
 
 small_map = 5, 5
 medium_map = 15, 15
@@ -27,6 +28,15 @@ def construct_map(rows, cols):
     if valid_exit_borders:
         exit_r, exit_c = random.choice(valid_exit_borders)
         arr[exit_r][exit_c] = 'E'
+
+    for r in range(1, rows -1):
+        for c in range(1,cols-1):
+            if arr[r][c] == '.' and (r,c) != (1,1):
+                hazard_chance = random.random()
+                if hazard_chance < 0.15:
+                    arr[r][c] = 'M'
+                elif hazard_chance < 0.20:
+                    arr[r][c] = 'S'
 
     arr[1][1] = 'P'
 
@@ -74,6 +84,57 @@ def bfs(grid, rows, cols):
     print("No path found")
     return None
 
+def ucs(grid, rows, cols):
+    start_r, start_c = find_player(grid, rows, cols)
+    pq = [(0, start_r, start_c,[])] # priority queue that stores total_cost, current row/col, path so far
+    visited = set()
+
+    directions = {
+        (-1, 0): "UP",
+        (1, 0): "DOWN",
+        (0, -1): "LEFT",
+        (0, 1): "RIGHT"
+    }
+
+    TILE_COSTS = {
+        '.': 1,
+        'E': 1,
+        'P': 1,
+        'M': 5,
+        'S': 20
+    }
+
+    while pq:
+        cost,r,c,path = heapq.heappop(pq) # always grabs the tuple with the lowest cost
+
+        # check visited after popping
+        if (r,c) in visited:
+            continue
+        visited.add((r,c))
+
+        # if exit is reached print how many steps and costs
+        if grid[r][c] == 'E':
+            print(f"Path found in: {len(path)} steps, cost: {cost}")
+            return path
+
+        # scan neighbours
+        for dr, dc in directions.keys():
+            nr, nc = r + dr, c + dc
+
+            if (0 <= nr < rows) and (0 <= nc < cols):
+                tile_type = grid[nr][nc]
+
+                if tile_type != '#' and (nr, nc) not in visited:
+                    step_cost = TILE_COSTS.get(tile_type, 1) # default to inf if tile type is unknown
+                    new_cost = cost + step_cost
+
+                    move_name = directions[(dr, dc)]
+                    new_path = path + [move_name]
+
+                    heapq.heappush(pq, (new_cost, nr, nc, new_path))
+
+    print("No path found")
+    return None
 
 def main():
     pygame.init()
@@ -87,16 +148,18 @@ def main():
     screen_width = cols * TILE_SIZE
     screen_height = rows * TILE_SIZE
     screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption('Dungeon Crawler - BFS Agent')
+    pygame.display.set_caption('Dungeon Crawler - UCS Agent')
 
     COLORS = {
         '#': (100, 100, 100),  # Wall
         '.': (30, 30, 30),  # Floor
         'P': (0, 255, 0),  # Player
-        'E': (255, 215, 0)  # Exit
+        'E': (255, 215, 0),  # Exit
+        'M': (139,69,19), # Mud
+        'S': (200,0,0) # Spikes
     }
 
-    path = bfs(my_map, rows, cols)
+    path = ucs(my_map, rows, cols)
 
     # Set up a clock to control the animation speed
     clock = pygame.time.Clock()
