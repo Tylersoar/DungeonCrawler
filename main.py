@@ -215,6 +215,70 @@ def a_star(grid, rows, cols):
     print("No path found")
     return None
 
+def greedy_search(grid, rows, cols):
+    start_r, start_c = find_player(grid, rows, cols)
+    exit_r, exit_c = find_exit(grid, rows, cols)
+
+    if exit_r is None:
+        print("Error: no exit found on map")
+        return None
+
+    # calculates the inital heuristic
+    start_h = manhattan_distance(start_r, start_c, exit_r, exit_c)
+
+    pq = [(start_h,0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
+    visited = set()
+
+    directions = {
+        (-1, 0): "UP",
+        (1, 0): "DOWN",
+        (0, -1): "LEFT",
+        (0, 1): "RIGHT"
+    }
+
+    TILE_COSTS = {
+        '.': 1,
+        'E': 1,
+        'P': 1,
+        'M': 5,
+        'S': 20
+    }
+
+    while pq:
+        f, g, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
+
+        # check visited after popping
+        if (r, c) in visited:
+            continue
+        visited.add((r, c))
+
+        # if exit is reached print how many steps and costs
+        if grid[r][c] == 'E':
+            print(f"A* path found in: {len(path)} steps, cost: {f}")
+            return path
+
+        # scan neighbours
+        for dr, dc in directions.keys():
+            nr, nc = r + dr, c + dc
+
+            if (0 <= nr < rows) and (0 <= nc < cols):
+                tile_type = grid[nr][nc]
+
+                if tile_type != '#' and (nr, nc) not in visited:
+                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
+                    new_g = g + step_cost
+
+                    new_h = manhattan_distance(nr, nc, exit_r, exit_c)
+
+                    new_f = new_h
+
+                    move_name = directions[(dr, dc)]
+                    new_path = path + [move_name]
+
+                    heapq.heappush(pq, (new_f, new_g, nr, nc, new_path))
+
+    print("No path found")
+    return None
 
 def main():
     pygame.init()
