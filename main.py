@@ -50,6 +50,13 @@ def find_player(grid, rows, cols):
                 return r, c
     return None, None
 
+def find_exit(grid,rows,cols):
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 'E':
+                return r, c
+    return None, None
+
 
 def bfs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
@@ -125,7 +132,7 @@ def ucs(grid, rows, cols):
                 tile_type = grid[nr][nc]
 
                 if tile_type != '#' and (nr, nc) not in visited:
-                    step_cost = TILE_COSTS.get(tile_type, 1) # default to inf if tile type is unknown
+                    step_cost = TILE_COSTS.get(tile_type, 1) # default cost is 1 if tile type is not in TILE_COSTS
                     new_cost = cost + step_cost
 
                     move_name = directions[(dr, dc)]
