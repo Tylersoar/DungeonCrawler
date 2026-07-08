@@ -29,9 +29,9 @@ def construct_map(rows, cols):
         exit_r, exit_c = random.choice(valid_exit_borders)
         arr[exit_r][exit_c] = 'E'
 
-    for r in range(1, rows -1):
-        for c in range(1,cols-1):
-            if arr[r][c] == '.' and (r,c) != (1,1):
+    for r in range(1, rows - 1):
+        for c in range(1, cols - 1):
+            if arr[r][c] == '.' and (r, c) != (1, 1):
                 hazard_chance = random.random()
                 if hazard_chance < 0.15:
                     arr[r][c] = 'M'
@@ -50,15 +50,17 @@ def find_player(grid, rows, cols):
                 return r, c
     return None, None
 
-def find_exit(grid,rows,cols):
+
+def find_exit(grid, rows, cols):
     for r in range(rows):
         for c in range(cols):
             if grid[r][c] == 'E':
                 return r, c
     return None, None
 
-def manhattan_distance(r1,c1,r2,c2):
-    return abs(r1-r2) + abs(c1-c2)
+
+def manhattan_distance(r1, c1, r2, c2):
+    return abs(r1 - r2) + abs(c1 - c2)
 
 
 def bfs(grid, rows, cols):
@@ -94,9 +96,10 @@ def bfs(grid, rows, cols):
     print("No path found")
     return None
 
+
 def ucs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
-    pq = [(0, start_r, start_c,[])] # priority queue that stores total_cost, current row/col, path so far
+    pq = [(0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
 
     directions = {
@@ -115,12 +118,12 @@ def ucs(grid, rows, cols):
     }
 
     while pq:
-        cost,r,c,path = heapq.heappop(pq) # always grabs the tuple with the lowest cost
+        cost, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
 
         # check visited after popping
-        if (r,c) in visited:
+        if (r, c) in visited:
             continue
-        visited.add((r,c))
+        visited.add((r, c))
 
         # if exit is reached print how many steps and costs
         if grid[r][c] == 'E':
@@ -135,7 +138,7 @@ def ucs(grid, rows, cols):
                 tile_type = grid[nr][nc]
 
                 if tile_type != '#' and (nr, nc) not in visited:
-                    step_cost = TILE_COSTS.get(tile_type, 1) # default cost is 1 if tile type is not in TILE_COSTS
+                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
                     new_cost = cost + step_cost
 
                     move_name = directions[(dr, dc)]
@@ -145,6 +148,73 @@ def ucs(grid, rows, cols):
 
     print("No path found")
     return None
+
+
+def a_star(grid, rows, cols):
+    start_r, start_c = find_player(grid, rows, cols)
+    exit_r, exit_c = find_exit(grid, rows, cols)
+
+    if exit_r is None:
+        print("Error: no exit found on map")
+        return None
+
+    # calculates the inital heuristic
+    start_h = manhattan_distance(start_r, start_c, exit_r, exit_c)
+
+    pq = [(start_h,0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
+    visited = set()
+
+    directions = {
+        (-1, 0): "UP",
+        (1, 0): "DOWN",
+        (0, -1): "LEFT",
+        (0, 1): "RIGHT"
+    }
+
+    TILE_COSTS = {
+        '.': 1,
+        'E': 1,
+        'P': 1,
+        'M': 5,
+        'S': 20
+    }
+
+    while pq:
+        f, g, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
+
+        # check visited after popping
+        if (r, c) in visited:
+            continue
+        visited.add((r, c))
+
+        # if exit is reached print how many steps and costs
+        if grid[r][c] == 'E':
+            print(f"A* path found in: {len(path)} steps, cost: {f}")
+            return path
+
+        # scan neighbours
+        for dr, dc in directions.keys():
+            nr, nc = r + dr, c + dc
+
+            if (0 <= nr < rows) and (0 <= nc < cols):
+                tile_type = grid[nr][nc]
+
+                if tile_type != '#' and (nr, nc) not in visited:
+                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
+                    new_g = g + step_cost
+
+                    new_h = manhattan_distance(nr, nc, exit_r, exit_c)
+
+                    new_f = new_g + new_h
+
+                    move_name = directions[(dr, dc)]
+                    new_path = path + [move_name]
+
+                    heapq.heappush(pq, (new_f, new_g, nr, nc, new_path))
+
+    print("No path found")
+    return None
+
 
 def main():
     pygame.init()
@@ -165,11 +235,11 @@ def main():
         '.': (30, 30, 30),  # Floor
         'P': (0, 255, 0),  # Player
         'E': (255, 215, 0),  # Exit
-        'M': (139,69,19), # Mud
-        'S': (200,0,0) # Spikes
+        'M': (139, 69, 19),  # Mud
+        'S': (200, 0, 0)  # Spikes
     }
 
-    path = ucs(my_map, rows, cols)
+    path = a_star(my_map, rows, cols)
 
     # Set up a clock to control the animation speed
     clock = pygame.time.Clock()
