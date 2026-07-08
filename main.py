@@ -38,7 +38,14 @@ def construct_map(rows, cols):
                 elif hazard_chance < 0.20:
                     arr[r][c] = 'S'
 
-    arr[1][1] = 'P'
+    arr[1][1] = 'G'
+    arr[1][cols - 2] = 'G'
+    arr[rows-2][1] = 'G'
+    arr[rows-2][cols-2] = 'G'
+
+    center_r, center_c = rows // 2, cols // 2
+
+    arr[center_r][center_c] = 'P'
 
     return arr
 
@@ -57,6 +64,14 @@ def find_exit(grid, rows, cols):
             if grid[r][c] == 'E':
                 return r, c
     return None, None
+
+def find_gems(grid, rows, cols):
+    gems = []
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 'G':
+                gems.append((r, c))
+    return tuple(gems)
 
 
 def manhattan_distance(r1, c1, r2, c2):
@@ -300,7 +315,8 @@ def main():
         'P': (0, 255, 0),  # Player
         'E': (255, 215, 0),  # Exit
         'M': (139, 69, 19),  # Mud
-        'S': (200, 0, 0)  # Spikes
+        'S': (200, 0, 0),  # Spikes
+        'G': (44,14,140)  # Gem
     }
 
     path = a_star(my_map, rows, cols)
