@@ -40,8 +40,8 @@ def construct_map(rows, cols):
 
     arr[1][1] = 'G'
     arr[1][cols - 2] = 'G'
-    arr[rows-2][1] = 'G'
-    arr[rows-2][cols-2] = 'G'
+    arr[rows - 2][1] = 'G'
+    arr[rows - 2][cols - 2] = 'G'
 
     center_r, center_c = rows // 2, cols // 2
 
@@ -65,6 +65,7 @@ def find_exit(grid, rows, cols):
                 return r, c
     return None, None
 
+
 def find_gems(grid, rows, cols):
     gems = []
     for r in range(rows):
@@ -72,6 +73,15 @@ def find_gems(grid, rows, cols):
             if grid[r][c] == 'G':
                 gems.append((r, c))
     return tuple(gems)
+
+
+def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c):
+    # find the Manhattan distance to the closest gem
+    if len(uncollected_gems) > 0:
+        distances = [abs(r - gr) + abs(c - gc) for gr, gc in uncollected_gems]
+        return min(distances)
+    else:
+        return abs(r - exit_r) + abs(c - exit_c)
 
 
 def manhattan_distance(r1, c1, r2, c2):
@@ -169,14 +179,17 @@ def a_star(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
     exit_r, exit_c = find_exit(grid, rows, cols)
 
+    initial_gems = find_gems(grid, rows, cols)
+
     if exit_r is None:
         print("Error: no exit found on map")
         return None
 
     # calculates the inital heuristic
-    start_h = manhattan_distance(start_r, start_c, exit_r, exit_c)
+    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c)
 
-    pq = [(start_h,0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
+    pq = [(start_h, 0, start_r, start_c, initial_gems,
+           [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
 
     directions = {
@@ -189,21 +202,23 @@ def a_star(grid, rows, cols):
     TILE_COSTS = {
         '.': 1,
         'E': 1,
+        'G': 1,
         'P': 1,
         'M': 5,
         'S': 20
     }
 
     while pq:
-        f, g, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
+        f, g, r, c, gems_left, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
 
+        state = (r, c, gems_left)
         # check visited after popping
-        if (r, c) in visited:
+        if state in visited:
             continue
-        visited.add((r, c))
+        visited.add(state)
 
         # if exit is reached print how many steps and costs
-        if grid[r][c] == 'E':
+        if grid[r][c] == 'E' and len(gems_left) == 0:
             print(f"A* path found in: {len(path)} steps, cost: {f}")
             return path
 
@@ -214,21 +229,27 @@ def a_star(grid, rows, cols):
             if (0 <= nr < rows) and (0 <= nc < cols):
                 tile_type = grid[nr][nc]
 
-                if tile_type != '#' and (nr, nc) not in visited:
-                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
-                    new_g = g + step_cost
+                if tile_type != '#':
+                    new_gems = gems_left
+                    if (nr, nc) in gems_left:
+                        new_gems = tuple(gem for gem in gems_left if gem != (nr, nc))
 
-                    new_h = manhattan_distance(nr, nc, exit_r, exit_c)
+                    new_state = (nr, nc, new_gems)
+                    if new_state not in visited:
+                        step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
+                        new_g = g + step_cost
 
-                    new_f = new_g + new_h
+                        new_h = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+                        new_f = new_g + new_h
 
-                    move_name = directions[(dr, dc)]
-                    new_path = path + [move_name]
+                        move_name = directions[(dr, dc)]
+                        new_path = path + [move_name]
 
-                    heapq.heappush(pq, (new_f, new_g, nr, nc, new_path))
+                        heapq.heappush(pq, (new_f, new_g, nr, nc, new_gems, new_path))
 
     print("No path found")
     return None
+
 
 def greedy_search(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
@@ -241,7 +262,7 @@ def greedy_search(grid, rows, cols):
     # calculates the inital heuristic
     start_h = manhattan_distance(start_r, start_c, exit_r, exit_c)
 
-    pq = [(start_h,0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
+    pq = [(start_h, 0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
 
     directions = {
@@ -295,6 +316,7 @@ def greedy_search(grid, rows, cols):
     print("No path found")
     return None
 
+
 def main():
     pygame.init()
 
@@ -316,13 +338,16 @@ def main():
         'E': (255, 215, 0),  # Exit
         'M': (139, 69, 19),  # Mud
         'S': (200, 0, 0),  # Spikes
-        'G': (44,14,140)  # Gem
+        'G': (44, 14, 140)  # Gem
     }
 
     path = a_star(my_map, rows, cols)
 
     # Set up a clock to control the animation speed
     clock = pygame.time.Clock()
+
+    player_r, player_c = find_player(my_map, rows, cols)
+    my_map[player_r][player_c] = '.'  # erase the player from the static map array
 
     running = True
     while running:
@@ -334,8 +359,7 @@ def main():
         if path and len(path) > 0:
             move = path.pop(0)  # Take the very first move off the list
 
-            pr, pc = find_player(my_map, rows, cols)
-            target_r, target_c = pr, pc
+            target_r, target_c = player_r, player_c
 
             if move == "UP":
                 target_r -= 1
@@ -348,12 +372,13 @@ def main():
 
             # Execute the move in the array
             if my_map[target_r][target_c] != '#':
-                if my_map[target_r][target_c] == 'E':
-                    print("Success! you reached the stairs.")
-                    path = []  # Empty the path to stop moving
+                player_r, player_c = target_r, target_c
 
-                my_map[pr][pc] = '.'
-                my_map[target_r][target_c] = 'P'
+                if my_map[target_r][target_c] == 'G':
+                    my_map[target_r][target_c] = '.'
+
+                if my_map[player_r][player_c] == 'E' and len(path) == 0:
+                    print("Success! you reached the stairs.")
 
         # Clears the screen
         screen.fill((0, 0, 0))
@@ -366,6 +391,10 @@ def main():
                 rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 pygame.draw.rect(screen, color, rect)
                 pygame.draw.rect(screen, (50, 50, 50), rect, 1)
+
+                if r == player_r and c == player_c:
+                    player_rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                    pygame.draw.rect(screen, COLORS['P'], player_rect)
 
         pygame.display.flip()
         clock.tick(10)

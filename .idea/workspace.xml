@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="added A* algorithm that uses heuristics to calculate the shortest path">
+    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -93,7 +93,7 @@
       <workItem from="1783424724115" duration="273000" />
       <workItem from="1783433705879" duration="1761000" />
       <workItem from="1783442109021" duration="24000" />
-      <workItem from="1783516026643" duration="1911000" />
+      <workItem from="1783516026643" duration="4934000" />
     </task>
     <task id="LOCAL-00001" summary="added 2D array mapping walls and exit">
       <option name="closed" value="true" />
@@ -167,7 +167,23 @@
       <option name="project" value="LOCAL" />
       <updated>1783517329728</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="implemented greedy search algorithm">
+      <option name="closed" value="true" />
+      <created>1783517975250</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1783517975250</updated>
+    </task>
+    <task id="LOCAL-00011" summary="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions">
+      <option name="closed" value="true" />
+      <created>1783518306103</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1783518306103</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -182,10 +198,12 @@
     <MESSAGE value="added helper function that returns the exit" />
     <MESSAGE value="added manhattan function that returns the grid distance between 2 points" />
     <MESSAGE value="added A* algorithm that uses heuristics to calculate the shortest path" />
-    <option name="LAST_COMMIT_MESSAGE" value="added A* algorithm that uses heuristics to calculate the shortest path" />
+    <MESSAGE value="implemented greedy search algorithm" />
+    <MESSAGE value="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783517225000" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783520998438" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
