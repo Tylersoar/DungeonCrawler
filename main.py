@@ -57,6 +57,9 @@ def find_exit(grid,rows,cols):
                 return r, c
     return None, None
 
+def manhattan_distance(r1,c1,r2,c2):
+    return abs(r1-r2) + abs(c1-c2)
+
 
 def bfs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
