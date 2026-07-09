@@ -7,6 +7,10 @@ small_map = 5, 5
 medium_map = 15, 15
 large_map = 30, 30
 
+def get_sprite(sheet, x, y, width, height,scale_to):
+    sprite = pygame.Surface((width, height), pygame.SRCALPHA)
+    sprite.blit(sheet, (0,0, (x,y,width,height)))
+    return pygame.transform.scale(sprite,(scale_to,scale_to))
 
 def construct_map(rows, cols):
     arr = [['.' for _ in range(cols)] for _ in range(rows)]
