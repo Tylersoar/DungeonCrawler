@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="1# walls now get drawn rotated to the correct placement" />
+    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="removed rotate wall todo" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -220,7 +220,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783612446775</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="removed rotate wall todo">
+      <option name="closed" value="true" />
+      <created>1783613987437</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1783613987437</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -252,10 +260,11 @@
     <MESSAGE value="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid" />
     <MESSAGE value="1# sprites load correctly and placed onto the tile map" />
     <MESSAGE value="1# walls now get drawn rotated to the correct placement" />
-    <option name="LAST_COMMIT_MESSAGE" value="1# walls now get drawn rotated to the correct placement" />
+    <MESSAGE value="removed rotate wall todo" />
+    <option name="LAST_COMMIT_MESSAGE" value="removed rotate wall todo" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783612340181" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783614132140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
