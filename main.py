@@ -352,7 +352,6 @@ def main():
     SPRITES = {
         '.': get_sprite(Dungeon_sprite_sheet, 112, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
         '#': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        # TODO horizontal wall, vertical needs to be accounted for
         'E': get_sprite(Dungeon_sprite_sheet, 144, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
         'M': get_sprite(Dungeon_sprite_sheet, 128, 96, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
         # TODO Bones placeholder as mud
