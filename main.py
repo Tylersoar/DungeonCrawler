@@ -1,3 +1,4 @@
+import os
 import random
 import pygame
 import sys
@@ -9,7 +10,7 @@ large_map = 30, 30
 
 def get_sprite(sheet, x, y, width, height,scale_to):
     sprite = pygame.Surface((width, height), pygame.SRCALPHA)
-    sprite.blit(sheet, (0,0, (x,y,width,height)))
+    sprite.blit(sheet, (0,0), (x,y,width,height))
     return pygame.transform.scale(sprite,(scale_to,scale_to))
 
 def construct_map(rows, cols):
@@ -325,7 +326,9 @@ def main():
     pygame.init()
 
     # Settings
-    TILE_SIZE = 25
+    TILE_SIZE = 32 # Scaled up from 16 for better visibility
+    NATIVE_TILE = 16 # The actual pixel size of the tiles
+
     rows, cols = medium_map
     my_map = construct_map(rows, cols)
 
@@ -335,15 +338,34 @@ def main():
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('Dungeon Crawler - UCS Agent')
 
-    COLORS = {
-        '#': (100, 100, 100),  # Wall
-        '.': (30, 30, 30),  # Floor
-        'P': (0, 255, 0),  # Player
-        'E': (255, 215, 0),  # Exit
-        'M': (139, 69, 19),  # Mud
-        'S': (200, 0, 0),  # Spikes
-        'G': (44, 14, 140)  # Gem
+    # loads spritesheet and handles error if not found
+    try:
+        Dungeon_sprite_sheet = pygame.image.load("assets/Dungeon_Tileset.png").convert_alpha()
+        Character_sprite_sheet = pygame.image.load("assets/Dungeon_Character.png").convert_alpha()
+    except FileNotFoundError:
+        print("Error: Couldn't find 'Dungeon_Tileset.png' or 'Character_Tileset.png'")
+        pygame.quit()
+        sys.exit()
+
+    SPRITES = {
+        '.': get_sprite(Dungeon_sprite_sheet,112,0, NATIVE_TILE, NATIVE_TILE,TILE_SIZE),
+        '#': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE,TILE_SIZE), #TODO horizontal wall, vertical needs to be accounted for
+        'E': get_sprite(Dungeon_sprite_sheet, 144, 48, NATIVE_TILE, NATIVE_TILE,TILE_SIZE),
+        'M': get_sprite(Dungeon_sprite_sheet, 128, 96, NATIVE_TILE, NATIVE_TILE,TILE_SIZE), #TODO Bones placeholder as mud
+        'S': get_sprite(Dungeon_sprite_sheet, 112, 112, NATIVE_TILE, NATIVE_TILE,TILE_SIZE), #TODO Skeleton placeholder as trap
+        'G': get_sprite(Dungeon_sprite_sheet, 96, 128, NATIVE_TILE, NATIVE_TILE,TILE_SIZE), #TODO Coins placeholder instead of gems
+        'P': get_sprite(Character_sprite_sheet, 64, 32, NATIVE_TILE, NATIVE_TILE,TILE_SIZE)
     }
+
+    # COLORS = {
+    #     '#': (100, 100, 100),  # Wall
+    #     '.': (30, 30, 30),  # Floor
+    #     'P': (0, 255, 0),  # Player
+    #     'E': (255, 215, 0),  # Exit
+    #     'M': (139, 69, 19),  # Mud
+    #     'S': (200, 0, 0),  # Spikes
+    #     'G': (44, 14, 140)  # Gem
+    # }
 
     path = a_star(my_map, rows, cols)
 
@@ -390,15 +412,16 @@ def main():
         # Draws the map
         for r in range(rows):
             for c in range(cols):
-                tile_type = my_map[r][c]
-                color = COLORS.get(tile_type, (255, 0, 255))
                 rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-                pygame.draw.rect(screen, color, rect)
-                pygame.draw.rect(screen, (50, 50, 50), rect, 1)
+                screen.blit(SPRITES['.'], rect)
+
+                tile_type = my_map[r][c]
+                if tile_type != '.':
+                    sprite_to_draw = SPRITES.get(tile_type, SPRITES['.'])
+                    screen.blit(sprite_to_draw,rect)
 
                 if r == player_r and c == player_c:
-                    player_rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-                    pygame.draw.rect(screen, COLORS['P'], player_rect)
+                    screen.blit(SPRITES['P'], rect)
 
         pygame.display.flip()
         clock.tick(10)
