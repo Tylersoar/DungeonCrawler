@@ -4,8 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="added multi-targeted heuristics function that finds the distance of the closest gem">
-      <change afterPath="$PROJECT_DIR$/assets/Dungeon_Tileset.png" afterDir="false" />
+    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid">
+      <change afterPath="$PROJECT_DIR$/assets/Dungeon_Character.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -102,7 +102,7 @@
       <workItem from="1783433705879" duration="1761000" />
       <workItem from="1783442109021" duration="24000" />
       <workItem from="1783516026643" duration="5279000" />
-      <workItem from="1783602084880" duration="3236000" />
+      <workItem from="1783602084880" duration="5691000" />
     </task>
     <task id="LOCAL-00001" summary="added 2D array mapping walls and exit">
       <option name="closed" value="true" />
@@ -200,7 +200,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783521282283</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid">
+      <option name="closed" value="true" />
+      <created>1783609088948</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1783609088948</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -218,10 +226,11 @@
     <MESSAGE value="implemented greedy search algorithm" />
     <MESSAGE value="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions" />
     <MESSAGE value="added multi-targeted heuristics function that finds the distance of the closest gem" />
-    <option name="LAST_COMMIT_MESSAGE" value="added multi-targeted heuristics function that finds the distance of the closest gem" />
+    <MESSAGE value="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid" />
+    <option name="LAST_COMMIT_MESSAGE" value="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783605204421" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783611395739" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
