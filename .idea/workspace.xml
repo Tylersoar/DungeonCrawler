@@ -4,8 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="added multi-targeted heuristics function that finds the distance of the closest gem">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="81751b8b-2a00-412d-a002-48cfdd66c52d" name="Changes" comment="1# sprites load correctly and placed onto the tile map&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,8 +60,9 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;issue-2-spritesheet&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/sawad/DungeonCrawler/assets&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -71,6 +72,12 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\sawad\DungeonCrawler\assets" />
+      <recent name="C:\Users\sawad\DungeonCrawler" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -93,6 +100,7 @@
       <workItem from="1783433705879" duration="1761000" />
       <workItem from="1783442109021" duration="24000" />
       <workItem from="1783516026643" duration="5279000" />
+      <workItem from="1783602084880" duration="7263000" />
     </task>
     <task id="LOCAL-00001" summary="added 2D array mapping walls and exit">
       <option name="closed" value="true" />
@@ -190,11 +198,54 @@
       <option name="project" value="LOCAL" />
       <updated>1783521282283</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid">
+      <option name="closed" value="true" />
+      <created>1783609088948</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1783609088948</updated>
+    </task>
+    <task id="LOCAL-00014" summary="1# sprites load correctly and placed onto the tile map">
+      <option name="closed" value="true" />
+      <created>1783611712451</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1783611712451</updated>
+    </task>
+    <task id="LOCAL-00015" summary="1# walls now get drawn rotated to the correct placement">
+      <option name="closed" value="true" />
+      <created>1783612446775</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1783612446775</updated>
+    </task>
+    <task id="LOCAL-00016" summary="removed rotate wall todo">
+      <option name="closed" value="true" />
+      <created>1783613987437</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1783613987437</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="added 2D array mapping walls and exit" />
@@ -208,10 +259,14 @@
     <MESSAGE value="implemented greedy search algorithm" />
     <MESSAGE value="changed player spawn to the center of the map and gems spawn the corners. added a find gems heuristic function returning gems positions" />
     <MESSAGE value="added multi-targeted heuristics function that finds the distance of the closest gem" />
-    <option name="LAST_COMMIT_MESSAGE" value="added multi-targeted heuristics function that finds the distance of the closest gem" />
+    <MESSAGE value="#1 added spritesheet and get_sprite function that extracts a single sprite from a master sheet and scales to the grid" />
+    <MESSAGE value="1# sprites load correctly and placed onto the tile map" />
+    <MESSAGE value="1# walls now get drawn rotated to the correct placement" />
+    <MESSAGE value="removed rotate wall todo" />
+    <option name="LAST_COMMIT_MESSAGE" value="removed rotate wall todo" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783521335958" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/DungeonCrawler$main.coverage" NAME="main Coverage Results" MODIFIED="1783614132140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
