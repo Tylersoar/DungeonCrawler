@@ -55,6 +55,7 @@ def construct_map(rows, cols):
 
     return arr
 
+
 def get_valid_moves(r, c, grid, rows, cols):
     valid_moves = []
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -63,6 +64,7 @@ def get_valid_moves(r, c, grid, rows, cols):
         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != '#':
             valid_moves.append((nr, nc))
     return valid_moves
+
 
 def find_player(grid, rows, cols):
     for r in range(rows):
@@ -331,6 +333,40 @@ def greedy_search(grid, rows, cols):
     return None
 
 
+def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols):
+    if depth == 0 or (sorcerer_r, sorcerer_c) == (player_r, player_c):
+        if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+            return 1000
+        return -manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
+
+    if is_maximizing:
+        max_eval = float("-inf")
+        for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols)
+            max_eval = max(max_eval, ev)
+        return max_eval
+
+    else:
+        min_eval = float("inf")
+        for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
+            ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc, rows, cols)
+            min_eval = min(min_eval, ev)
+        return min_eval
+
+
+def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, depth=2):
+    best_move = (sorcerer_r, sorcerer_c)
+    max_eval = float("-inf")
+
+    for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
+        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols)
+        if ev > max_eval:
+            max_eval = ev
+            best_move = (nr, nc)
+
+    return best_move
+
+
 def main():
     pygame.init()
 
@@ -367,6 +403,7 @@ def main():
         'G': get_sprite(Dungeon_sprite_sheet, 96, 128, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
         # TODO Coins placeholder instead of gems
         'P': get_sprite(Character_sprite_sheet, 64, 32, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'X': get_sprite(Character_sprite_sheet, 64, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
 
         # auto tiling sprites for walls
         'WALL_T': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Top Edge
@@ -386,6 +423,8 @@ def main():
 
     player_r, player_c = find_player(my_map, rows, cols)
     my_map[player_r][player_c] = '.'  # erase the player from the static map array
+
+    sorcerer_r, sorcerer_c = rows - 2, cols - 3
 
     running = True
     while running:
@@ -417,6 +456,14 @@ def main():
 
                 if my_map[player_r][player_c] == 'E' and len(path) == 0:
                     print("Success! you reached the stairs.")
+
+            if (sorcerer_r, sorcerer_c) != (player_r, player_c):
+                sorcerer_r, sorcerer_c = get_best_sorcerer_move(
+                    my_map, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, depth=2
+                )
+            if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+                print("DEATH! The sorcerer caught you.")
+                path = []
 
         # Clears the screen
         screen.fill((0, 0, 0))
@@ -463,6 +510,8 @@ def main():
                     # Draw player on top
                 if r == player_r and c == player_c:
                     screen.blit(SPRITES['P'], rect)
+                elif r == sorcerer_r and c == sorcerer_c:
+                    screen.blit(SPRITES['X'], rect)
 
         pygame.display.flip()
         clock.tick(10)
