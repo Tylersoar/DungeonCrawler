@@ -223,7 +223,7 @@ def ucs(grid, rows, cols):
     return None
 
 
-def a_star(grid, rows, cols):
+def a_star(grid, rows, cols, distance_func=manhattan_distance):
     start_r, start_c = find_player(grid, rows, cols)
     exit_r, exit_c = find_exit(grid, rows, cols)
 
@@ -234,7 +234,7 @@ def a_star(grid, rows, cols):
         return None
 
     # calculates the inital heuristic
-    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c)
+    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c,distance_func)
 
     pq = [(start_h, 0, start_r, start_c, initial_gems,
            [])]  # priority queue that stores total_cost, current row/col, path so far
@@ -287,7 +287,7 @@ def a_star(grid, rows, cols):
                         step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
                         new_g = g + step_cost
 
-                        new_h = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+                        new_h = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c, distance_func)
                         new_f = new_g + new_h
 
                         move_name = directions[(dr, dc)]
@@ -413,7 +413,7 @@ def main():
         'WALL_BR': get_sprite(Dungeon_sprite_sheet, 80, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE)  # Bottom-Right Corner
     }
 
-    path = dfs(my_map, rows, cols)
+    path = a_star(my_map, rows, cols, distance_func=euclidean_distance)
 
     # Set up a clock to control the animation speed
     clock = pygame.time.Clock()
