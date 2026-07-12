@@ -7,6 +7,9 @@ small_map = 5, 5
 medium_map = 15, 15
 large_map = 30, 30
 CAPTURE_REWARD = 1000
+EVADE_WEIGHT = 80.0
+W_GOAL = 1.5
+GEM_COST = 12.0
 
 HAZARD_PENALTY_M = 8.0
 HAZARD_PENALTY_S = 32.0
@@ -338,11 +341,28 @@ def greedy_search(grid, rows, cols):
     return None
 
 
+def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+        return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0:
+        return -CAPTURE_REWARD
+    dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
+
+    # proximity to the player is a negative score, so we want to reward the sorcerer for being closer to the player
+    # sorcerer (Max) gain by reducing dist
+    # player (Min) gains when close -> flees when threatened
+    evade = EVADE_WEIGHT / (dist + 1)
+
+    # len(gems_left) * GEM_COST makes stepping on a gem lower than the score
+    # multi_target_heuristic pulls the player to the nearest gem/exit
+    goal = W_GOAL * (len(gems_left) * GEM_COST + multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c))
+
+    return evade + goal
+
 def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
             exit_c):
     if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
     if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
-
 
     if is_maximizing:
         # sorcerers turn - collects no gems, gems-left passes through unchanged
@@ -380,14 +400,15 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         return min_eval
 
 
-def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c, rows, cols,
+                           depth=2, avoid=None):
     best_moves = [(sorcerer_r, sorcerer_c)]
     max_eval = float("-inf")
 
     for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
-        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols,gems_left, exit_r, exit_c)
+        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c)
         # Penalise re-entering a recently occupied cell to break pursuit loops.
-        if avoid is not None and (nr,nc) in avoid:
+        if avoid is not None and (nr, nc) in avoid:
             ev -= REVISIT_PENALTY
         if ev > max_eval:
             max_eval = ev
@@ -396,8 +417,6 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, gem
             # tie for best score
             best_moves.append((nr, nc))
     return random.choice(best_moves)
-
-
 
 
 def main():
