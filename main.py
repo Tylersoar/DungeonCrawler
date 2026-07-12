@@ -2,6 +2,7 @@ import random
 import pygame
 import sys
 import heapq
+import math
 
 small_map = 5, 5
 medium_map = 15, 15
@@ -81,17 +82,20 @@ def find_gems(grid, rows, cols):
     return tuple(gems)
 
 
-def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c):
+def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func):
     # find the Manhattan distance to the closest gem
     if len(uncollected_gems) > 0:
         distances = [abs(r - gr) + abs(c - gc) for gr, gc in uncollected_gems]
         return min(distances)
     else:
-        return abs(r - exit_r) + abs(c - exit_c)
+        return distance_func(r, c, exit_r, exit_c)
 
 
 def manhattan_distance(r1, c1, r2, c2):
     return abs(r1 - r2) + abs(c1 - c2)
+
+def euclidean_distance(r1, c1, r2, c2):
+    return math.sqrt((r1 - r2)**2 + (c1 - c2)**2)
 
 
 def bfs(grid, rows, cols):
