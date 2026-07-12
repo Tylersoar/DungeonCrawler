@@ -6,6 +6,11 @@ import heapq
 small_map = 5, 5
 medium_map = 15, 15
 large_map = 30, 30
+CAPTURE_REWARD = 1000
+
+HAZARD_PENALTY_M = 8.0
+HAZARD_PENALTY_S = 32.0
+REVISIT_PENALTY = 50.0
 
 
 def get_sprite(sheet, x, y, width, height, scale_to):
@@ -333,38 +338,66 @@ def greedy_search(grid, rows, cols):
     return None
 
 
-def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols):
-    if depth == 0 or (sorcerer_r, sorcerer_c) == (player_r, player_c):
-        if (sorcerer_r, sorcerer_c) == (player_r, player_c):
-            return 1000
-        return -manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
+def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
+            exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
+
 
     if is_maximizing:
+        # sorcerers turn - collects no gems, gems-left passes through unchanged
         max_eval = float("-inf")
-        for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
-            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols)
+        moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+        for nr, nc in moves:
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c)
             max_eval = max(max_eval, ev)
+        if not moves:  # cornered sorcerer - stay put, let player move
+            return minimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c)
         return max_eval
 
     else:
+        # player's turn  collect any gem landed on, then let the sorcerer reply
         min_eval = float("inf")
-        for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
-            ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc, rows, cols)
+        moves = get_valid_moves(player_r, player_c, grid, rows, cols)
+        for nr, nc in moves:
+            new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+            ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                         rows, cols, new_gems, exit_r, exit_c)
+            # discourage routing the player through hazard tiles;
+            # applied at every ply of the lookahead so a path crossing multiple
+            # hazards is penalised more than one crossing a single hazard
+            landing_tile = grid[nr][nc]
+            if landing_tile == 'M':
+                ev += HAZARD_PENALTY_M
+            elif landing_tile == 'S':
+                ev += HAZARD_PENALTY_S
             min_eval = min(min_eval, ev)
+
+        if not moves:
+            return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c)
         return min_eval
 
 
-def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, depth=2):
-    best_move = (sorcerer_r, sorcerer_c)
+def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+    best_moves = [(sorcerer_r, sorcerer_c)]
     max_eval = float("-inf")
 
     for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
-        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols)
+        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols,gems_left, exit_r, exit_c)
+        # Penalise re-entering a recently occupied cell to break pursuit loops.
+        if avoid is not None and (nr,nc) in avoid:
+            ev -= REVISIT_PENALTY
         if ev > max_eval:
             max_eval = ev
-            best_move = (nr, nc)
+            best_moves = [(nr, nc)]
+        elif ev == max_eval:
+            # tie for best score
+            best_moves.append((nr, nc))
+    return random.choice(best_moves)
 
-    return best_move
+
 
 
 def main():
