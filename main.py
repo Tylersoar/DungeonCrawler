@@ -128,6 +128,44 @@ def bfs(grid, rows, cols):
     return None
 
 
+def dfs(grid, rows, cols):
+    start_r, start_c = find_player(grid, rows, cols)
+    # uses a stack (LIFO) for DFS instead of a queue (FIFO) for BFS
+    stack = [(start_r, start_c, [])]
+    # keeps track of nodes that are fully processed
+    visited = set()
+
+    directions = {
+        (-1, 0): "UP",
+        (1, 0): "DOWN",
+        (0, -1): "LEFT",
+        (0, 1): "RIGHT"
+    }
+
+    while stack:
+        # pop from the end of a list to simulate a stack (LIFO)
+        r, c, path = stack.pop()
+
+        if grid[r][c] == 'E':
+            print(f"Path found in: {len(path)} steps")
+            return path
+
+        # for DFS, mark node as visited when it is popped and processed
+        if (r, c) not in visited:
+            visited.add((r, c))
+
+            for dr, dc in directions.keys():
+                nr, nc = r + dr, c + dc
+                if (0 <= nr < rows) and (0 <= nc < cols):
+                    if grid[nr][nc] != '#' and (nr, nc) not in visited:
+                        move_name = directions[(dr, dc)]
+                        new_path = path + [move_name]
+                        stack.append((nr, nc, new_path))
+
+    print("No path found")
+    return None
+
+
 def ucs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
     pq = [(0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
@@ -371,7 +409,7 @@ def main():
         'WALL_BR': get_sprite(Dungeon_sprite_sheet, 80, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE)  # Bottom-Right Corner
     }
 
-    path = a_star(my_map, rows, cols)
+    path = dfs(my_map, rows, cols)
 
     # Set up a clock to control the animation speed
     clock = pygame.time.Clock()
