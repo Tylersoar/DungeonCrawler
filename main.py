@@ -411,11 +411,13 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                             gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
     best_moves = [(sorcerer_r, sorcerer_c)]
     max_eval = float("-inf")
+    cur_dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
     for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
         ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c,
                      rows, cols, gems_left, exit_r, exit_c)
         # penalise re-entering a recently-occupied cell to break pursuit/evasion oscillation
-        if avoid is not None and (nr, nc) in avoid:
+        making_progress = manhattan_distance(nr, nc, player_r, player_c) < cur_dist
+        if avoid is not None and (nr, nc) in avoid and not making_progress:
             ev -= REVISIT_PENALTY
         if ev > max_eval:
             max_eval = ev
@@ -431,6 +433,7 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                           gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
     best_moves = [(player_r, player_c)]
     min_eval = float("inf")
+    cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
     for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
         new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
         ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
@@ -444,7 +447,9 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
         elif landing_tile == 'S':
             ev += HAZARD_PENALTY_S
         # penalise re-entering a recently-occupied cell to break pursuit/evasion oscillation
-        if avoid is not None and (nr, nc) in avoid:
+        new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+        making_progress = (nr, nc) in gems_left or new_dist < cur_dist
+        if avoid is not None and (nr, nc) in avoid and not making_progress:
             ev += REVISIT_PENALTY
         if ev < min_eval:
             min_eval = ev
