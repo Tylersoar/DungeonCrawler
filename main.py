@@ -359,6 +359,7 @@ def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r
 
     return evade + goal
 
+
 def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
             exit_c):
     if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
@@ -419,6 +420,31 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c, gem
     return random.choice(best_moves)
 
 
+def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                         gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+    best_moves = [(player_r, player_c)]
+    min_eval = float("inf")
+    for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
+        new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+        ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                     rows, cols, new_gems, exit_r, exit_c)
+
+        landing_tile = grid[nr][nc]
+        if landing_tile == 'M':
+            ev += HAZARD_PENALTY_M
+        elif landing_tile == 'S':
+            ev += HAZARD_PENALTY_S
+        # penalise re-entering a recently-occupied cell to break pursuit.
+        if avoid is not None and (nr, nc) in avoid:
+            ev += REVISIT_PENALTY
+        if ev < min_eval:
+            min_eval = ev
+            best_moves = [(nr, nc)]
+        elif ev == min_eval:
+            best_moves.append((nr, nc))
+    return random.choice(best_moves)
+
+
 def main():
     pygame.init()
 
@@ -433,7 +459,7 @@ def main():
     screen_width = cols * TILE_SIZE
     screen_height = rows * TILE_SIZE
     screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption('Dungeon Crawler - UCS Agent')
+    pygame.display.set_caption('Dungeon Crawler - A* Agent')
 
     # loads spritesheet and handles error if not found
     try:
