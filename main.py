@@ -3,7 +3,6 @@ import pygame
 import sys
 import heapq
 import math
-from collections import deque
 
 small_map = 5, 5
 medium_map = 15, 15
@@ -110,21 +109,20 @@ def find_gems(grid, rows, cols):
     return tuple(gems)
 
 
-def manhattan_distance(r1, c1, r2, c2):
-    return abs(r1 - r2) + abs(c1 - c2)
-
-
-def euclidean_distance(r1, c1, r2, c2):
-    return math.sqrt((r1 - r2) ** 2 + (c1 - c2) ** 2)
-
-
-def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func=manhattan_distance):
-    # find the (distance_func) distance to the closest gem
+def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func):
+    # find the Manhattan distance to the closest gem
     if len(uncollected_gems) > 0:
         distances = [abs(r - gr) + abs(c - gc) for gr, gc in uncollected_gems]
         return min(distances)
     else:
         return distance_func(r, c, exit_r, exit_c)
+
+
+def manhattan_distance(r1, c1, r2, c2):
+    return abs(r1 - r2) + abs(c1 - c2)
+
+def euclidean_distance(r1, c1, r2, c2):
+    return math.sqrt((r1 - r2)**2 + (c1 - c2)**2)
 
 
 def bfs(grid, rows, cols):
@@ -263,7 +261,7 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
         return None
 
     # calculates the inital heuristic
-    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c, distance_func)
+    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c,distance_func)
 
     pq = [(start_h, 0, start_r, start_c, initial_gems,
            [])]  # priority queue that stores total_cost, current row/col, path so far
@@ -548,10 +546,7 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
 
                 screen.blit(sprite_to_draw, rect)
 
-            if (r, c) == player_pos:
-                screen.blit(SPRITES['P'], rect)
-            elif sorcerer_pos is not None and (r, c) == sorcerer_pos:
-                screen.blit(SPRITES['X'], rect)
+    path = a_star(my_map, rows, cols, distance_func=euclidean_distance)
 
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
     path_fn = PATHFINDERS[algorithm]
