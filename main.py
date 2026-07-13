@@ -6,7 +6,22 @@ import math
 
 small_map = 5, 5
 medium_map = 15, 15
-large_map = 30, 30
+large_map = 25, 25
+
+# Algorithm selection "bfs" / "dfs" / "ucs" / "astar" / "astar_euclidean" / "greedy"
+ALGORITHM = "minimax"
+
+MAP_SIZE = medium_map if ALGORITHM == "minimax" else medium_map
+
+# minimax tuning
+EVADE_WEIGHT = 80.0  # sorcerer-pursuit / player-flee strength (inverse proximity)
+W_GOAL = 1.5  # player values collecting gems / reaching the exit
+MINIMAX_DEPTH = 4  # lookahead plies (one player move + one sorcerer reply per pair)
+CAPTURE_REWARD = 1000  # |value| for catch/win — dominates heuristic
+GEM_COST = 12.0  # reward per uncollected gem; > typical nearest-gem delta so collecting pays off
+REVISIT_PENALTY = 50.0  # discourages re-entering recently-occupied cells to break oscillation
+HAZARD_PENALTY_M = 8.0  # 'M' tile penalty; scaled below GEM_COST so a short detour usually pays off
+HAZARD_PENALTY_S = 32.0  # 'S' tile penalty, ~4x HAZARD_PENALTY_M to mirror TILE_COSTS' M=5/S=20 ratio
 
 
 def get_sprite(sheet, x, y, width, height, scale_to):
@@ -55,6 +70,18 @@ def construct_map(rows, cols):
     arr[center_r][center_c] = 'P'
 
     return arr
+
+
+def get_valid_moves(r, c, grid, rows, cols):
+    """Used by minimax mode: unlike the pathfinders below, this has no notion
+    of 'visited' -- it's a per-turn legal-move query, not a search primitive."""
+    valid_moves = []
+    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    for dr, dc in directions:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != '#':
+            valid_moves.append((nr, nc))
+    return valid_moves
 
 
 def find_player(grid, rows, cols):
@@ -338,7 +365,7 @@ def greedy_search(grid, rows, cols):
 
         # if exit is reached print how many steps and costs
         if grid[r][c] == 'E':
-            print(f"A* path found in: {len(path)} steps, cost: {f}")
+            print(f"Greedy path found in: {len(path)} steps, cost: {f}")
             return path
 
         # scan neighbours
@@ -364,59 +391,166 @@ def greedy_search(grid, rows, cols):
     print("No path found")
     return None
 
+PATHFINDERS = {
+    "bfs": lambda grid, rows, cols: bfs(grid, rows, cols),
+    "dfs": lambda grid, rows, cols: dfs(grid, rows, cols),
+    "ucs": lambda grid, rows, cols: ucs(grid, rows, cols),
+    "astar": lambda grid, rows, cols: a_star(grid, rows, cols, distance_func=manhattan_distance),
+    "astar_euclidean": lambda grid, rows, cols: a_star(grid, rows, cols, distance_func=euclidean_distance),
+    "greedy": lambda grid, rows, cols: greedy_search(grid, rows, cols),
+}
 
-def main():
-    pygame.init()
+def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+        return CAPTURE_REWARD  # catch = best for sorcerer (max)
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0:
+        return -CAPTURE_REWARD  # player wins = worst for the sorcerer (min)
+    dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
 
-    # Settings
-    TILE_SIZE = 32  # Scaled up from 16 for better visibility
-    NATIVE_TILE = 16  # The actual pixel size of the tiles
+    # proximity term. Large when sorcerer is close, -0 when far, and nonzero at every distance
+    # sorcerer (max) always gains by reducing distance
+    # player (min) only gains when getting close
+    evade = EVADE_WEIGHT / (dist + 1)
 
-    rows, cols = medium_map
-    my_map = construct_map(rows, cols)
+    # Goal term: reward gem collection (monotonic in gems_left) AND proximity to goals.
+    #   len(gems_left)*GEM_COST makes stepping on a gem lower the score
+    goal = W_GOAL * (len(gems_left) * GEM_COST
+                     + multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c))
+    return evade + goal
 
-    # Set up the display
-    screen_width = cols * TILE_SIZE
-    screen_height = rows * TILE_SIZE
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption('Dungeon Crawler - UCS Agent')
 
-    # loads spritesheet and handles error if not found
-    try:
-        Dungeon_sprite_sheet = pygame.image.load("assets/Dungeon_Tileset.png").convert_alpha()
-        Character_sprite_sheet = pygame.image.load("assets/Dungeon_Character.png").convert_alpha()
-    except FileNotFoundError:
-        print("Error: Couldn't find 'Dungeon_Tileset.png' or 'Character_Tileset.png'")
-        pygame.quit()
-        sys.exit()
+def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
+            exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
+    if depth == 0: return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
 
-    SPRITES = {
-        '.': get_sprite(Dungeon_sprite_sheet, 112, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        '#': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'E': get_sprite(Dungeon_sprite_sheet, 144, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'M': get_sprite(Dungeon_sprite_sheet, 128, 96, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        # TODO Bones placeholder as mud
-        'S': get_sprite(Dungeon_sprite_sheet, 112, 112, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        # TODO Skeleton placeholder as trap
-        'G': get_sprite(Dungeon_sprite_sheet, 96, 128, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        # TODO Coins placeholder instead of gems
-        'P': get_sprite(Character_sprite_sheet, 64, 32, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+    if is_maximizing:
+        # sorcerers turn - collects no gems, gems-left passes through unchanged
+        max_eval = float("-inf")
+        moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+        for nr, nc in moves:
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c)
+            max_eval = max(max_eval, ev)
+        if not moves:  # cornered sorcerer - stay put, let player move
+            return minimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c)
+        return max_eval
 
-        # auto tiling sprites for walls
-        'WALL_T': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Top Edge
-        'WALL_B': get_sprite(Dungeon_sprite_sheet, 16, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Bottom Edge
-        'WALL_L': get_sprite(Dungeon_sprite_sheet, 0, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Left Edge
-        'WALL_R': get_sprite(Dungeon_sprite_sheet, 80, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Right Edge
-        'WALL_TL': get_sprite(Dungeon_sprite_sheet, 0, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Top-Left Corner
-        'WALL_TR': get_sprite(Dungeon_sprite_sheet, 80, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Top-Right Corner
-        'WALL_BL': get_sprite(Dungeon_sprite_sheet, 0, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),  # Bottom-Left Corner
-        'WALL_BR': get_sprite(Dungeon_sprite_sheet, 80, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE)  # Bottom-Right Corner
-    }
+    else:
+        # player's turn — collect any gem landed on, then let the sorcerer reply
+        min_eval = float("inf")
+        moves = get_valid_moves(player_r, player_c, grid, rows, cols)
+        for nr, nc in moves:
+            new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+            ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                         rows, cols, new_gems, exit_r, exit_c)
+            # discourage (but don't forbid) routing the player through hazard tiles;
+            # applied at every ply of the lookahead so a path crossing multiple
+            # hazards is penalised more than one crossing a single hazard
+            landing_tile = grid[nr][nc]
+            if landing_tile == 'M':
+                ev += HAZARD_PENALTY_M
+            elif landing_tile == 'S':
+                ev += HAZARD_PENALTY_S
+            min_eval = min(min_eval, ev)
+
+        if not moves:
+            return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c)
+        return min_eval
+
+
+def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                           gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+    best_moves = [(sorcerer_r, sorcerer_c)]
+    max_eval = float("-inf")
+    cur_dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
+    for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
+        ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c,
+                     rows, cols, gems_left, exit_r, exit_c)
+        # penalise re-entering a recently-occupied cell to break pursuit/evasion
+        # oscillation -- but only when the move ISN'T already closing distance
+        # on the player, so genuine forward pursuit is never blocked by history
+        making_progress = manhattan_distance(nr, nc, player_r, player_c) < cur_dist
+        if avoid is not None and (nr, nc) in avoid and not making_progress:
+            ev -= REVISIT_PENALTY
+        if ev > max_eval:
+            max_eval = ev
+            best_moves = [(nr, nc)]
+        elif ev == max_eval:
+            best_moves.append((nr, nc))
+    return random.choice(best_moves)
+
+
+def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                         gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+    best_moves = [(player_r, player_c)]
+    min_eval = float("inf")
+    cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
+    for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
+        new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+        ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                     rows, cols, new_gems, exit_r, exit_c)
+        # discourage stepping onto a hazard tile this turn, same weighting as
+        # the in-recursion penalty in minimax() so the immediate move and the
+        # lookahead agree with each other
+        landing_tile = grid[nr][nc]
+        if landing_tile == 'M':
+            ev += HAZARD_PENALTY_M
+        elif landing_tile == 'S':
+            ev += HAZARD_PENALTY_S
+        # penalise re-entering a recently-occupied cell to break pursuit/evasion
+        # oscillation -- but only when the move ISN'T already collecting a gem
+        # or reducing distance to the nearest remaining gem/exit
+        new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+        making_progress = (nr, nc) in gems_left or new_dist < cur_dist
+        if avoid is not None and (nr, nc) in avoid and not making_progress:
+            ev += REVISIT_PENALTY
+        if ev < min_eval:
+            min_eval = ev
+            best_moves = [(nr, nc)]
+        elif ev == min_eval:
+            best_moves.append((nr, nc))
+    return random.choice(best_moves)
+
+def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
+    for r in range(rows):
+        for c in range(cols):
+            rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            screen.blit(SPRITES['.'], rect)
+
+            tile_type = my_map[r][c]
+            if tile_type != '.':
+                if tile_type == '#':
+                    if r == 0 and c == 0:
+                        sprite_to_draw = SPRITES['WALL_TL']
+                    elif r == 0 and c == cols - 1:
+                        sprite_to_draw = SPRITES['WALL_TR']
+                    elif r == rows - 1 and c == 0:
+                        sprite_to_draw = SPRITES['WALL_BL']
+                    elif r == rows - 1 and c == cols - 1:
+                        sprite_to_draw = SPRITES['WALL_BR']
+                    elif r == 0:
+                        sprite_to_draw = SPRITES['WALL_T']
+                    elif r == rows - 1:
+                        sprite_to_draw = SPRITES['WALL_B']
+                    elif c == 0:
+                        sprite_to_draw = SPRITES['WALL_L']
+                    elif c == cols - 1:
+                        sprite_to_draw = SPRITES['WALL_R']
+                    else:
+                        sprite_to_draw = SPRITES['#']
+                else:
+                    sprite_to_draw = SPRITES.get(tile_type, SPRITES['.'])
+
+                screen.blit(sprite_to_draw, rect)
 
     path = a_star(my_map, rows, cols, distance_func=euclidean_distance)
 
-    # Set up a clock to control the animation speed
-    clock = pygame.time.Clock()
+def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
+    path_fn = PATHFINDERS[algorithm]
+    path = path_fn(my_map, rows, cols)
 
     player_r, player_c = find_player(my_map, rows, cols)
     my_map[player_r][player_c] = '.'  # erase the player from the static map array
@@ -452,57 +586,130 @@ def main():
                 if my_map[player_r][player_c] == 'E' and len(path) == 0:
                     print("Success! you reached the stairs.")
 
-        # Clears the screen
         screen.fill((0, 0, 0))
-
-        # Draws the map
-        for r in range(rows):
-            for c in range(cols):
-                rect = pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-                screen.blit(SPRITES['.'], rect)
-
-                tile_type = my_map[r][c]
-                if tile_type != '.':
-                    # --- NEW: AUTO-TILING LOGIC ---
-                    if tile_type == '#':
-                        # Check Corners first
-                        if r == 0 and c == 0:
-                            sprite_to_draw = SPRITES['WALL_TL']
-                        elif r == 0 and c == cols - 1:
-                            sprite_to_draw = SPRITES['WALL_TR']
-                        elif r == rows - 1 and c == 0:
-                            sprite_to_draw = SPRITES['WALL_BL']
-                        elif r == rows - 1 and c == cols - 1:
-                            sprite_to_draw = SPRITES['WALL_BR']
-
-                        # Check Edges next
-                        elif r == 0:
-                            sprite_to_draw = SPRITES['WALL_T']
-                        elif r == rows - 1:
-                            sprite_to_draw = SPRITES['WALL_B']
-                        elif c == 0:
-                            sprite_to_draw = SPRITES['WALL_L']
-                        elif c == cols - 1:
-                            sprite_to_draw = SPRITES['WALL_R']
-
-                        else:
-                            sprite_to_draw = SPRITES['#']
-
-                            # Draws all other items (M, S, G, E)
-                    else:
-                        sprite_to_draw = SPRITES.get(tile_type, SPRITES['.'])
-
-                    screen.blit(sprite_to_draw, rect)
-
-                    # Draw player on top
-                if r == player_r and c == player_c:
-                    screen.blit(SPRITES['P'], rect)
-
+        render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, (player_r, player_c))
         pygame.display.flip()
         clock.tick(10)
 
     pygame.quit()
     sys.exit()
+
+
+def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
+    player_r, player_c = find_player(my_map, rows, cols)
+    my_map[player_r][player_c] = '.'  # erase the player from the static map array
+
+    sorcerer_r, sorcerer_c = rows - 2, cols - 3
+
+    exit_r, exit_c = find_exit(my_map, rows, cols)  # exit is static — compute once
+
+    game_over = False
+
+    player_history = deque(maxlen=8)  # recent player cells, used to discourage oscillation
+    sorcerer_history = deque(maxlen=8)  # recent sorcerer cells
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        if not game_over:
+            gems_left = find_gems(my_map, rows, cols)
+
+            player_history.append((player_r, player_c))
+            player_r, player_c = get_best_player_move(
+                my_map, sorcerer_r, sorcerer_c, player_r, player_c,
+                gems_left, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
+                avoid=set(player_history)
+            )
+
+            if my_map[player_r][player_c] == 'G':
+                my_map[player_r][player_c] = '.'
+
+            remaining_gems = find_gems(my_map, rows, cols)
+            if my_map[player_r][player_c] == 'E' and len(remaining_gems) == 0:
+                print("Success! you reached the stairs.")
+                game_over = True
+
+            if not game_over:
+                if (sorcerer_r, sorcerer_c) != (player_r, player_c):
+                    sorcerer_history.append((sorcerer_r, sorcerer_c))
+                    sorcerer_r, sorcerer_c = get_best_sorcerer_move(
+                        my_map, sorcerer_r, sorcerer_c, player_r, player_c,
+                        remaining_gems, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
+                        avoid=set(sorcerer_history)
+                    )
+
+                if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+                    print("DEATH! The sorcerer caught you.")
+                    game_over = True
+
+        screen.fill((0, 0, 0))
+        render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, (player_r, player_c), (sorcerer_r, sorcerer_c))
+        pygame.display.flip()
+        clock.tick(10)
+
+    pygame.quit()
+    sys.exit()
+
+
+def main():
+    pygame.init()
+
+    # Settings
+    TILE_SIZE = 32  # Scaled up from 16 for better visibility
+    NATIVE_TILE = 16  # The actual pixel size of the tiles
+
+    rows, cols = MAP_SIZE
+    my_map = construct_map(rows, cols)
+
+    # Set up the display
+    screen_width = cols * TILE_SIZE
+    screen_height = rows * TILE_SIZE
+    screen = pygame.display.set_mode((screen_width, screen_height))
+    pygame.display.set_caption(f'Dungeon Crawler - {ALGORITHM.upper()} Agent')
+
+    # loads spritesheet and handles error if not found
+    try:
+        Dungeon_sprite_sheet = pygame.image.load("assets/Dungeon_Tileset.png").convert_alpha()
+        Character_sprite_sheet = pygame.image.load("assets/Dungeon_Character.png").convert_alpha()
+    except FileNotFoundError:
+        print("Error: Couldn't find 'Dungeon_Tileset.png' or 'Character_Tileset.png'")
+        pygame.quit()
+        sys.exit()
+
+    SPRITES = {
+        '.': get_sprite(Dungeon_sprite_sheet, 112, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        '#': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'E': get_sprite(Dungeon_sprite_sheet, 144, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'M': get_sprite(Dungeon_sprite_sheet, 128, 96, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'S': get_sprite(Dungeon_sprite_sheet, 112, 112, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'G': get_sprite(Dungeon_sprite_sheet, 96, 128, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'P': get_sprite(Character_sprite_sheet, 64, 32, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'X': get_sprite(Character_sprite_sheet, 64, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+
+        'WALL_T': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_B': get_sprite(Dungeon_sprite_sheet, 16, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_L': get_sprite(Dungeon_sprite_sheet, 0, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_R': get_sprite(Dungeon_sprite_sheet, 80, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_TL': get_sprite(Dungeon_sprite_sheet, 0, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_TR': get_sprite(Dungeon_sprite_sheet, 80, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_BL': get_sprite(Dungeon_sprite_sheet, 0, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
+        'WALL_BR': get_sprite(Dungeon_sprite_sheet, 80, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE)
+    }
+
+    clock = pygame.time.Clock()
+
+    if ALGORITHM == "minimax":
+        run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
+    elif ALGORITHM in PATHFINDERS:
+        run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, ALGORITHM)
+    else:
+        valid = ", ".join(list(PATHFINDERS.keys()) + ["minimax"])
+        print(f"Unknown ALGORITHM '{ALGORITHM}'. Valid options: {valid}")
+        pygame.quit()
+        sys.exit()
 
 
 if __name__ == '__main__':
