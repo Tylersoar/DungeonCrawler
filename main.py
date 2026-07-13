@@ -3,17 +3,16 @@ import pygame
 import sys
 import heapq
 import math
+from collections import deque
 
 small_map = 5, 5
 medium_map = 15, 15
-large_map = 25, 25
+large_map = 30, 30
 
-# Algorithm selection "bfs" / "dfs" / "ucs" / "astar" / "astar_euclidean" / "greedy"
 ALGORITHM = "minimax"
 
-MAP_SIZE = medium_map if ALGORITHM == "minimax" else medium_map
+MAP_SIZE = large_map if ALGORITHM == "minimax" else medium_map
 
-# minimax tuning
 EVADE_WEIGHT = 80.0  # sorcerer-pursuit / player-flee strength (inverse proximity)
 W_GOAL = 1.5  # player values collecting gems / reaching the exit
 MINIMAX_DEPTH = 4  # lookahead plies (one player move + one sorcerer reply per pair)
@@ -109,20 +108,21 @@ def find_gems(grid, rows, cols):
     return tuple(gems)
 
 
-def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func):
-    # find the Manhattan distance to the closest gem
+def manhattan_distance(r1, c1, r2, c2):
+    return abs(r1 - r2) + abs(c1 - c2)
+
+
+def euclidean_distance(r1, c1, r2, c2):
+    return math.sqrt((r1 - r2) ** 2 + (c1 - c2) ** 2)
+
+
+def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func=manhattan_distance):
+    # find the (distance_func) distance to the closest gem
     if len(uncollected_gems) > 0:
         distances = [abs(r - gr) + abs(c - gc) for gr, gc in uncollected_gems]
         return min(distances)
     else:
         return distance_func(r, c, exit_r, exit_c)
-
-
-def manhattan_distance(r1, c1, r2, c2):
-    return abs(r1 - r2) + abs(c1 - c2)
-
-def euclidean_distance(r1, c1, r2, c2):
-    return math.sqrt((r1 - r2)**2 + (c1 - c2)**2)
 
 
 def bfs(grid, rows, cols):
@@ -261,7 +261,7 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
         return None
 
     # calculates the inital heuristic
-    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c,distance_func)
+    start_h = multi_target_heuristic(start_r, start_c, initial_gems, exit_r, exit_c, distance_func)
 
     pq = [(start_h, 0, start_r, start_c, initial_gems,
            [])]  # priority queue that stores total_cost, current row/col, path so far
@@ -391,6 +391,7 @@ def greedy_search(grid, rows, cols):
     print("No path found")
     return None
 
+
 PATHFINDERS = {
     "bfs": lambda grid, rows, cols: bfs(grid, rows, cols),
     "dfs": lambda grid, rows, cols: dfs(grid, rows, cols),
@@ -400,6 +401,7 @@ PATHFINDERS = {
     "greedy": lambda grid, rows, cols: greedy_search(grid, rows, cols),
 }
 
+
 def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c):
     if (sorcerer_r, sorcerer_c) == (player_r, player_c):
         return CAPTURE_REWARD  # catch = best for sorcerer (max)
@@ -407,13 +409,8 @@ def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r
         return -CAPTURE_REWARD  # player wins = worst for the sorcerer (min)
     dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
 
-    # proximity term. Large when sorcerer is close, -0 when far, and nonzero at every distance
-    # sorcerer (max) always gains by reducing distance
-    # player (min) only gains when getting close
     evade = EVADE_WEIGHT / (dist + 1)
 
-    # Goal term: reward gem collection (monotonic in gems_left) AND proximity to goals.
-    #   len(gems_left)*GEM_COST makes stepping on a gem lower the score
     goal = W_GOAL * (len(gems_left) * GEM_COST
                      + multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c))
     return evade + goal
@@ -479,6 +476,8 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
             max_eval = ev
             best_moves = [(nr, nc)]
         elif ev == max_eval:
+            # tie for best score -> keep all equally-good candidates, don't let
+            # the fixed [RIGHT, LEFT, DOWN, UP] iteration order silently pick a winner
             best_moves.append((nr, nc))
     return random.choice(best_moves)
 
@@ -514,6 +513,8 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
             best_moves.append((nr, nc))
     return random.choice(best_moves)
 
+
+
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
     for r in range(rows):
         for c in range(cols):
@@ -546,7 +547,13 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
 
                 screen.blit(sprite_to_draw, rect)
 
-    path = a_star(my_map, rows, cols, distance_func=euclidean_distance)
+            if (r, c) == player_pos:
+                screen.blit(SPRITES['P'], rect)
+            elif sorcerer_pos is not None and (r, c) == sorcerer_pos:
+                screen.blit(SPRITES['X'], rect)
+
+
+
 
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
     path_fn = PATHFINDERS[algorithm]
