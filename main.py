@@ -7,7 +7,7 @@ from collections import deque
 
 small_map = 5, 5
 medium_map = 15, 15
-large_map = 30, 30
+large_map = 25, 25
 
 ALGORITHM = "minimax"
 
@@ -417,7 +417,7 @@ def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r
 
 
 def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
-            exit_c):
+            exit_c, alpha=float("-inf"), beta=float("inf")):
     if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
     if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
     if depth == 0: return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
@@ -427,11 +427,14 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         max_eval = float("-inf")
         moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
         for nr, nc in moves:
-            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c)
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c, alpha, beta)
             max_eval = max(max_eval, ev)
+            alpha = max(alpha, ev)
+            if alpha >= beta:
+                break
         if not moves:  # cornered sorcerer - stay put, let player move
             return minimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c)
+                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
         return max_eval
 
     else:
@@ -441,7 +444,7 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         for nr, nc in moves:
             new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
             ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
-                         rows, cols, new_gems, exit_r, exit_c)
+                         rows, cols, new_gems, exit_r, exit_c, alpha, beta)
             # discourage (but don't forbid) routing the player through hazard tiles;
             # applied at every ply of the lookahead so a path crossing multiple
             # hazards is penalised more than one crossing a single hazard
@@ -451,10 +454,12 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
             elif landing_tile == 'S':
                 ev += HAZARD_PENALTY_S
             min_eval = min(min_eval, ev)
-
+            beta = min(beta, ev)
+            if beta <= alpha:
+                break
         if not moves:
             return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c)
+                           rows, cols, gems_left, exit_r, exit_c,alpha, beta)
         return min_eval
 
 
@@ -462,10 +467,12 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                            gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
     best_moves = [(sorcerer_r, sorcerer_c)]
     max_eval = float("-inf")
+    alpha = float("-inf")
+    beta = float("inf")
     cur_dist = manhattan_distance(sorcerer_r, sorcerer_c, player_r, player_c)
     for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
         ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c,
-                     rows, cols, gems_left, exit_r, exit_c)
+                     rows, cols, gems_left, exit_r, exit_c, alpha, beta)
         # penalise re-entering a recently-occupied cell to break pursuit/evasion
         # oscillation -- but only when the move ISN'T already closing distance
         # on the player, so genuine forward pursuit is never blocked by history
@@ -479,6 +486,8 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
             # tie for best score -> keep all equally-good candidates, don't let
             # the fixed [RIGHT, LEFT, DOWN, UP] iteration order silently pick a winner
             best_moves.append((nr, nc))
+
+        alpha = max(alpha, max_eval)
     return random.choice(best_moves)
 
 
@@ -486,11 +495,13 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                          gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
     best_moves = [(player_r, player_c)]
     min_eval = float("inf")
+    alpha = float("-inf")
+    beta = float("inf")
     cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
     for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
         new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
         ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
-                     rows, cols, new_gems, exit_r, exit_c)
+                     rows, cols, new_gems, exit_r, exit_c, alpha, beta)
         # discourage stepping onto a hazard tile this turn, same weighting as
         # the in-recursion penalty in minimax() so the immediate move and the
         # lookahead agree with each other
@@ -511,6 +522,8 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
             best_moves = [(nr, nc)]
         elif ev == min_eval:
             best_moves.append((nr, nc))
+
+        beta = min(beta, min_eval)
     return random.choice(best_moves)
 
 
