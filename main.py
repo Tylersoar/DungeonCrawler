@@ -566,6 +566,34 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
     return random.choice(best_moves)
 
 
+# player-side move selection in expectimax mode - alpha and beta isn't parsed and instead of calling minimax(), expectimax is called
+def get_best_player_move_expectimax(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c, rows,
+                                    cols, depth=2, avoid=None):
+    best_moves = [(player_r, player_c)]
+    min_eval = float("inf")
+    cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
+    for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
+        new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+        ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                        rows, cols, new_gems, exit_r, exit_c)
+        landing_tile = grid[nr][nc]
+        if landing_tile == 'M':
+            ev += HAZARD_PENALTY_M
+        elif landing_tile == 'S':
+            ev += HAZARD_PENALTY_S
+        new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+        making_progress = (nr, nc) in gems_left or new_dist < cur_dist
+        if avoid is not None and (nr, nc) in avoid and not making_progress:
+            ev += REVISIT_PENALTY
+        if ev < min_eval:
+            min_eval = ev
+            best_moves = [(nr, nc)]
+        elif ev == min_eval:
+            best_moves.append((nr, nc))
+
+    return random.choice(best_moves)
+
+
 # sorcerers behaviour in expectimax mode: chooses randomly among legal moves.
 def get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols):
     moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
