@@ -465,6 +465,43 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         return min_eval
 
 
+def expectimax(grid, depth, is_chance, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
+               exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
+    if depth == 0: return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
+
+    if is_chance:
+        moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+        if not moves:  # cornered sorcerer - stay put, let player move
+            return expectimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left,
+                              exit_r, exit_c)
+        total = 0.0
+        for nr, nc in moves:
+            total += expectimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left,
+                                exit_r, exit_c)
+        return total / len(moves)  # uniform average for sorcerers moves
+
+    else:
+        min_eval = float("inf")
+        moves = get_valid_moves(player_r, player_c, grid, rows, cols)
+        for nr, nc in moves:
+            new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+            ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                            rows, cols, new_gems, exit_r, exit_c)
+            # same hazard shaping as minimax(), applied at every ply of the lookahead
+            landing_tile = grid[nr][nc]
+            if landing_tile == 'M':
+                ev += HAZARD_PENALTY_M
+            elif landing_tile == 'S':
+                ev += HAZARD_PENALTY_S
+            min_eval = min(min_eval, ev)
+        if not moves:
+            return expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
+                              rows, cols, gems_left, exit_r, exit_c)
+        return min_eval
+
+
 def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                            gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
     best_moves = [(sorcerer_r, sorcerer_c)]
@@ -527,6 +564,7 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
 
         beta = min(beta, min_eval)
     return random.choice(best_moves)
+
 
 # sorcerers behaviour in expectimax mode: chooses randomly among legal moves.
 def get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols):
