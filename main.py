@@ -9,7 +9,8 @@ small_map = 5, 5
 medium_map = 15, 15
 large_map = 25, 25
 
-ALGORITHM = "minimax"
+# choose bfs, dfs, ucs, astar, astar_euclidean, greedy, minimax
+ALGORITHM = "astar_euclidean"
 
 MAP_SIZE = large_map if ALGORITHM == "minimax" else medium_map
 
@@ -427,7 +428,8 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         max_eval = float("-inf")
         moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
         for nr, nc in moves:
-            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c, alpha, beta)
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c,
+                         alpha, beta)
             max_eval = max(max_eval, ev)
             alpha = max(alpha, ev)
             if alpha >= beta:
@@ -459,7 +461,7 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
                 break
         if not moves:
             return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c,alpha, beta)
+                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
         return min_eval
 
 
@@ -526,6 +528,12 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
         beta = min(beta, min_eval)
     return random.choice(best_moves)
 
+# sorcerers behaviour in expectimax mode: chooses randomly among legal moves.
+def get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols):
+    moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+    if not moves:
+        return sorcerer_r, sorcerer_c
+    return random.choice(moves)
 
 
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
@@ -564,8 +572,6 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
                 screen.blit(SPRITES['P'], rect)
             elif sorcerer_pos is not None and (r, c) == sorcerer_pos:
                 screen.blit(SPRITES['X'], rect)
-
-
 
 
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
