@@ -10,7 +10,7 @@ medium_map = 15, 15
 large_map = 25, 25
 
 # choose bfs, dfs, ucs, astar, astar_euclidean, greedy, minimax
-ALGORITHM = "astar_euclidean"
+ALGORITHM = "expectimax"
 
 MAP_SIZE = large_map if ALGORITHM == "minimax" else medium_map
 
@@ -851,6 +851,8 @@ def main():
 
     if ALGORITHM == "minimax":
         run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
+    elif ALGORITHM == "expectimax":
+        run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
     elif ALGORITHM in PATHFINDERS:
         run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, ALGORITHM)
     else:
