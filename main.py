@@ -693,7 +693,7 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
 
     sorcerer_r, sorcerer_c = rows - 2, cols - 3
 
-    exit_r, exit_c = find_exit(my_map, rows, cols)  # exit is static — compute once
+    exit_r, exit_c = find_exit(my_map, rows, cols)
 
     game_over = False
 
@@ -731,6 +731,62 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
                         my_map, sorcerer_r, sorcerer_c, player_r, player_c,
                         remaining_gems, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
                         avoid=set(sorcerer_history)
+                    )
+
+                if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+                    print("DEATH! The sorcerer caught you.")
+                    game_over = True
+
+        screen.fill((0, 0, 0))
+        render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, (player_r, player_c), (sorcerer_r, sorcerer_c))
+        pygame.display.flip()
+        clock.tick(10)
+
+    pygame.quit()
+    sys.exit()
+
+
+def run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
+    player_r, player_c = find_player(my_map, rows, cols)
+    my_map[player_r][player_c] = '.'  # erase the player from the map array
+
+    sorcerer_r, sorcerer_c = rows - 2, cols - 3
+
+    exit_r, exit_c = find_exit(my_map, rows, cols)
+
+    game_over = False
+
+    player_history = deque(maxlen=8)  # recent player cells, used to discourage oscillation
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        if not game_over:
+            gems_left = find_gems(my_map, rows, cols)
+
+            player_history.append((player_r, player_c))
+            player_r, player_c = get_best_player_move_expectimax(
+                my_map, sorcerer_r, sorcerer_c, player_r, player_c,
+                gems_left, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
+                avoid=set(player_history)
+            )
+
+            if my_map[player_r][player_c] == 'G':
+                my_map[player_r][player_c] = '.'
+
+            remaining_gems = find_gems(my_map, rows, cols)
+            if my_map[player_r][player_c] == 'E' and len(remaining_gems) == 0:
+                print("Success! you reached the stairs.")
+                game_over = True
+
+            if not game_over:
+                if (sorcerer_r, sorcerer_c) != (player_r, player_c):
+                    # chance-node assumption in get_best_player_move_expectimax
+                    sorcerer_r, sorcerer_c = get_random_sorcerer_move(
+                        my_map, sorcerer_r, sorcerer_c, rows, cols
                     )
 
                 if (sorcerer_r, sorcerer_c) == (player_r, player_c):
