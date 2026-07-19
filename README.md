@@ -8,7 +8,7 @@ This repository was developed as a Final Year University Project to explore sing
 
 ### Single-Agent Uninformed Search
 * **Breadth-First Search (BFS):** Explores the grid in even layers to find the shortest path (fewest steps) to the exit.
-* **Uniform-Cost Search (UCS):** Utilizes a priority queue (`heapq`) to navigate around high-cost hazards (Mud, Spikes) and find the mathematically cheapest path.
+* **Uniform-Cost Search (UCS):** Utilizes a priority queue (`heapq`) to navigate around high-cost hazards (Bones, Skulls) and find the mathematically cheapest path.
 
 ### Single-Agent Informed (Heuristic) Search
 * **Greedy Best-First Search:** Explores purely based on the Manhattan Distance heuristic to the exit.
