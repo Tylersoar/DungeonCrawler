@@ -19,5 +19,5 @@ This repository was developed as a Final Year University Project to explore sing
 The environment relies on a clean Model-View-Controller (MVC) design pattern to prevent continuous physics bugs from impacting the discrete AI mathematical states.
 * **The Model:** A lightweight 2D array generated procedurally with random hazard placements.
 * **The View:** A Pygame rendering loop that visually interprets the array state at a capped framerate so the algorithms can be observed in real-time.
-* **Features:** Impassable walls, dynamic player routing, environmental hazards (Mud, Spikes), and collectable state-altering items (Gems).
+* **Features:** Impassable walls, dynamic player routing, environmental hazards (Bones, Skulls), and collectable state-altering items (Gems).
 
