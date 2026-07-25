@@ -40,6 +40,8 @@ TILE_COSTS = {
     'S': 20,
 }
 
+ADJACENT_OFFSETS = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
 
 def get_sprite(sheet, x, y, width, height, scale_to):
     sprite = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -91,20 +93,19 @@ def construct_map(rows, cols):
 
 def get_valid_moves(r, c, grid, rows, cols):
     valid_moves = []
-    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    for dr, dc in directions:
+    for dr, dc in ADJACENT_OFFSETS:
         nr, nc = r + dr, c + dc
         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != '#':
             valid_moves.append((nr, nc))
     return valid_moves
 
 
-def _find_tile(grid, row, cols, tile):
-    for r in range(row):
+def _find_tile(grid, rows, cols, tile):
+    for r in range(rows):
         for c in range(cols):
             if grid[r][c] == tile:
                 return r, c
-    return None
+    return None, None
 
 
 def find_player(grid, rows, cols):
@@ -161,7 +162,7 @@ def _revisits_without_progress(pos, avoid, making_progress):
 
 def bfs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
-    queue = [(start_r, start_c, [])]
+    queue = deque([(start_r, start_c, [])])
     visited = {(start_r, start_c)}
 
     while queue:
@@ -171,7 +172,7 @@ def bfs(grid, rows, cols):
             print(f"Path found in: {len(path)} steps")
             return path
 
-        for dr, dc, move_name in DIRECTIONS.items():
+        for (dr, dc), move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
             if (0 <= nr < rows) and (0 <= nc < cols):
                 if grid[nr][nc] != '#' and (nr, nc) not in visited:
@@ -200,7 +201,7 @@ def dfs(grid, rows, cols):
         if (r, c) not in visited:
             visited.add((r, c))
 
-            for dr, dc, move_name in DIRECTIONS.items():
+            for (dr, dc), move_name in DIRECTIONS.items():
                 nr, nc = r + dr, c + dc
                 if (0 <= nr < rows) and (0 <= nc < cols):
                     if grid[nr][nc] != '#' and (nr, nc) not in visited:
@@ -229,7 +230,7 @@ def ucs(grid, rows, cols):
             return path
 
         # scan neighbours
-        for dr, dc, move_name in DIRECTIONS.items():
+        for (dr, dc), move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
@@ -274,7 +275,7 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
             return path
 
         # scan neighbours
-        for dr, dc, move_name in DIRECTIONS.items():
+        for (dr, dc), move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
@@ -324,7 +325,7 @@ def greedy_search(grid, rows, cols):
             return path
 
         # scan neighbours
-        for dr, dc, move_name in DIRECTIONS.items():
+        for (dr, dc), move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
@@ -367,14 +368,21 @@ def evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r
 
 def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
             exit_c, alpha=float("-inf"), beta=float("inf")):
-    if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
-    if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
-    if depth == 0: return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+        return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0:
+        return -CAPTURE_REWARD
+    if depth == 0:
+        return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
 
     if is_maximizing:
         # sorcerers turn - collects no gems, gems-left passes through unchanged
-        max_eval = float("-inf")
         moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+        if not moves:
+            return minimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
+
+        max_eval = float("-inf")
         for nr, nc in moves:
             ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c,
                          alpha, beta)
@@ -389,8 +397,12 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
 
     else:
         # player's turn — collect any gem landed on, then let the sorcerer reply
-        min_eval = float("inf")
         moves = get_valid_moves(player_r, player_c, grid, rows, cols)
+        if not moves:
+            return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
+                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
+
+        min_eval = float("inf")
         for nr, nc in moves:
             new_gems = _apply_gem_pickup((nr, nc), gems_left)
             ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
@@ -398,18 +410,11 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
             # discourage (but don't forbid) routing the player through hazard tiles;
             # applied at every ply of the lookahead so a path crossing multiple
             # hazards is penalised more than one crossing a single hazard
-            landing_tile = grid[nr][nc]
-            if landing_tile == 'M':
-                ev += HAZARD_PENALTY_M
-            elif landing_tile == 'S':
-                ev += HAZARD_PENALTY_S
+            ev += _hazard_penalty(grid[nr][nc])
             min_eval = min(min_eval, ev)
             beta = min(beta, ev)
             if beta <= alpha:
                 break
-        if not moves:
-            return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
         return min_eval
 
 
