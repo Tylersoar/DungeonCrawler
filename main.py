@@ -22,6 +22,13 @@ REVISIT_PENALTY = 50.0  # discourages re-entering recently-occupied cells to bre
 HAZARD_PENALTY_M = 8.0  # 'M' tile penalty; scaled below GEM_COST so a short detour usually pays off
 HAZARD_PENALTY_S = 32.0  # 'S' tile penalty, ~4x HAZARD_PENALTY_M to mirror TILE_COSTS' M=5/S=20 ratio
 
+DIRECTIONS = {
+    (-1, 0): "UP",
+    (1, 0): "DOWN",
+    (0, -1): "LEFT",
+    (0, 1): "RIGHT",
+}
+
 
 def get_sprite(sheet, x, y, width, height, scale_to):
     sprite = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -128,12 +135,14 @@ def _apply_gem_pickup(pos, gems_left):
         return tuple(gem for gem in gems_left if gem != pos)
     return gems_left
 
+
 def _hazard_penalty(tile):
     if tile == 'M':
         return HAZARD_PENALTY_M
     if tile == 'S':
         return HAZARD_PENALTY_S
     return 0.0
+
 
 def _revisits_without_progress(pos, avoid, making_progress):
     return avoid is not None and pos in avoid and not making_progress
@@ -144,31 +153,19 @@ def bfs(grid, rows, cols):
     queue = [(start_r, start_c, [])]
     visited = {(start_r, start_c)}
 
-    directions = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
-
     while queue:
-        r, c, path = queue.pop(0)
+        r, c, path = queue.popleft()
 
         if grid[r][c] == 'E':
             print(f"Path found in: {len(path)} steps")
             return path
 
-        for dr, dc in directions.keys():
+        for dr, dc, move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
             if (0 <= nr < rows) and (0 <= nc < cols):
                 if grid[nr][nc] != '#' and (nr, nc) not in visited:
                     visited.add((nr, nc))
-
-                    move_name = directions[(dr, dc)]
-                    new_path = path + [move_name]
-
-                    queue.append((nr, nc, new_path))
-
+                    queue.append((nr, nc, path + [move_name]))
     print("No path found")
     return None
 
@@ -179,13 +176,6 @@ def dfs(grid, rows, cols):
     stack = [(start_r, start_c, [])]
     # keeps track of nodes that are fully processed
     visited = set()
-
-    directions = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
 
     while stack:
         # pop from the end of a list to simulate a stack (LIFO)
@@ -199,13 +189,11 @@ def dfs(grid, rows, cols):
         if (r, c) not in visited:
             visited.add((r, c))
 
-            for dr, dc in directions.keys():
+            for dr, dc, move_name in DIRECTIONS.items():
                 nr, nc = r + dr, c + dc
                 if (0 <= nr < rows) and (0 <= nc < cols):
                     if grid[nr][nc] != '#' and (nr, nc) not in visited:
-                        move_name = directions[(dr, dc)]
-                        new_path = path + [move_name]
-                        stack.append((nr, nc, new_path))
+                        stack.append((nr, nc, path + [move_name]))
 
     print("No path found")
     return None
@@ -215,13 +203,6 @@ def ucs(grid, rows, cols):
     start_r, start_c = find_player(grid, rows, cols)
     pq = [(0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
-
-    directions = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
 
     TILE_COSTS = {
         '.': 1,
@@ -245,7 +226,7 @@ def ucs(grid, rows, cols):
             return path
 
         # scan neighbours
-        for dr, dc in directions.keys():
+        for dr, dc, move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
@@ -254,12 +235,7 @@ def ucs(grid, rows, cols):
                 if tile_type != '#' and (nr, nc) not in visited:
                     step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
                     new_cost = cost + step_cost
-
-                    move_name = directions[(dr, dc)]
-                    new_path = path + [move_name]
-
-                    heapq.heappush(pq, (new_cost, nr, nc, new_path))
-
+                    heapq.heappush(pq, (new_cost, nr, nc, path + [move_name]))
     print("No path found")
     return None
 
@@ -280,13 +256,6 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
     pq = [(start_h, 0, start_r, start_c, initial_gems,
            [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
-
-    directions = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
 
     TILE_COSTS = {
         '.': 1,
@@ -312,7 +281,7 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
             return path
 
         # scan neighbours
-        for dr, dc in directions.keys():
+        for dr, dc, move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
@@ -323,17 +292,13 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
 
                     new_state = (nr, nc, new_gems)
                     if new_state not in visited:
-                        step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
+                        step_cost = TILE_COSTS.get(tile_type, 1)  # default cost 1 if tile not in TILE_COSTS
                         new_g = g + step_cost
 
                         new_h = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c, distance_func)
                         new_f = new_g + new_h
 
-                        move_name = directions[(dr, dc)]
-                        new_path = path + [move_name]
-
-                        heapq.heappush(pq, (new_f, new_g, nr, nc, new_gems, new_path))
-
+                        heapq.heappush(pq, (new_f, new_g, nr, nc, new_gems, path + [move_name]))
     print("No path found")
     return None
 
@@ -351,13 +316,6 @@ def greedy_search(grid, rows, cols):
 
     pq = [(start_h, 0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
-
-    directions = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
 
     TILE_COSTS = {
         '.': 1,
@@ -381,25 +339,19 @@ def greedy_search(grid, rows, cols):
             return path
 
         # scan neighbours
-        for dr, dc in directions.keys():
+        for dr, dc, move_name in DIRECTIONS.items():
             nr, nc = r + dr, c + dc
 
             if (0 <= nr < rows) and (0 <= nc < cols):
                 tile_type = grid[nr][nc]
 
                 if tile_type != '#' and (nr, nc) not in visited:
-                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost is 1 if tile type is not in TILE_COSTS
+                    step_cost = TILE_COSTS.get(tile_type, 1)  # default cost 1 if tile not in TILE_COSTS
                     new_g = g + step_cost
-
                     new_h = manhattan_distance(nr, nc, exit_r, exit_c)
+                    new_f = new_h  # greedy: rank purely by heuristic, ignore accumulated cost
 
-                    new_f = new_h
-
-                    move_name = directions[(dr, dc)]
-                    new_path = path + [move_name]
-
-                    heapq.heappush(pq, (new_f, new_g, nr, nc, new_path))
-
+                    heapq.heappush(pq, (new_f, new_g, nr, nc, path + [move_name]))
     print("No path found")
     return None
 
@@ -525,9 +477,7 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
     for nr, nc in get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols):
         ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c,
                      rows, cols, gems_left, exit_r, exit_c, alpha, beta)
-        # penalise re-entering a recently-occupied cell to break pursuit/evasion
-        # oscillation -- but only when the move ISN'T already closing distance
-        # on the player, so genuine forward pursuit is never blocked by history
+
         making_progress = manhattan_distance(nr, nc, player_r, player_c) < cur_dist
         if _revisits_without_progress((nr, nc), avoid, making_progress):
             ev -= REVISIT_PENALTY
@@ -535,8 +485,6 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
             max_eval = ev
             best_moves = [(nr, nc)]
         elif ev == max_eval:
-            # tie for best score -> keep all equally-good candidates, don't let
-            # the fixed [RIGHT, LEFT, DOWN, UP] iteration order silently pick a winner
             best_moves.append((nr, nc))
 
         alpha = max(alpha, max_eval)
@@ -595,6 +543,27 @@ def get_best_player_move_expectimax(grid, sorcerer_r, sorcerer_c, player_r, play
             best_moves.append((nr, nc))
 
     return random.choice(best_moves)
+
+
+def get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols):
+    moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+    if not moves:  # cornered sorcerer - stay put
+        return sorcerer_r, sorcerer_c
+    return random.choice(moves)
+
+
+def _sorcerer_pursuit_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                           gems_left, exit_r, exit_c, rows, cols, depth, avoid):
+    return get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                                  gems_left, exit_r, exit_c, rows, cols, depth, avoid)
+
+
+def _sorcerer_random_move(grid, sorcerer_r, sorcerer_c, rows, cols):
+    return get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols)
+
+
+def _initial_sorcerer_position(rows, cols):
+    return rows - 2, cols - 3
 
 
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
