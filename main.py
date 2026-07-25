@@ -80,11 +80,12 @@ def get_valid_moves(r, c, grid, rows, cols):
             valid_moves.append((nr, nc))
     return valid_moves
 
-def _find_tile(grid,row,cols,tile):
+
+def _find_tile(grid, row, cols, tile):
     for r in range(row):
         for c in range(cols):
             if grid[r][c] == tile:
-                return r,c
+                return r, c
     return None
 
 
@@ -120,6 +121,22 @@ def multi_target_heuristic(r, c, uncollected_gems, exit_r, exit_c, distance_func
         return min(distances)
     else:
         return distance_func(r, c, exit_r, exit_c)
+
+
+def _apply_gem_pickup(pos, gems_left):
+    if pos in gems_left:
+        return tuple(gem for gem in gems_left if gem != pos)
+    return gems_left
+
+def _hazard_penalty(tile):
+    if tile == 'M':
+        return HAZARD_PENALTY_M
+    if tile == 'S':
+        return HAZARD_PENALTY_S
+    return 0.0
+
+def _revisits_without_progress(pos, avoid, making_progress):
+    return avoid is not None and pos in avoid and not making_progress
 
 
 def bfs(grid, rows, cols):
@@ -302,9 +319,7 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
                 tile_type = grid[nr][nc]
 
                 if tile_type != '#':
-                    new_gems = gems_left
-                    if (nr, nc) in gems_left:
-                        new_gems = tuple(gem for gem in gems_left if gem != (nr, nc))
+                    new_gems = _apply_gem_pickup((nr, nc), gems_left)
 
                     new_state = (nr, nc, new_gems)
                     if new_state not in visited:
@@ -424,7 +439,8 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         max_eval = float("-inf")
         moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
         for nr, nc in moves:
-            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c, alpha, beta)
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c,
+                         alpha, beta)
             max_eval = max(max_eval, ev)
             alpha = max(alpha, ev)
             if alpha >= beta:
@@ -439,7 +455,7 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         min_eval = float("inf")
         moves = get_valid_moves(player_r, player_c, grid, rows, cols)
         for nr, nc in moves:
-            new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+            new_gems = _apply_gem_pickup((nr, nc), gems_left)
             ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
                          rows, cols, new_gems, exit_r, exit_c, alpha, beta)
             # discourage (but don't forbid) routing the player through hazard tiles;
@@ -456,7 +472,46 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
                 break
         if not moves:
             return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c,alpha, beta)
+                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
+        return min_eval
+
+
+def expectimax(grid, depth, is_chance, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
+               exit_c):
+    if (sorcerer_r, sorcerer_c) == (player_r, player_c):
+        return CAPTURE_REWARD
+    if grid[player_r][player_c] == 'E' and len(gems_left) == 0:
+        return -CAPTURE_REWARD
+    if depth == 0:
+        return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
+
+    if is_chance:
+        # sorcerer's turn - collects no gems, gems_left passes through unchanged
+        moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
+        if not moves:  # cornered sorcerer - stay put, let player move
+            return expectimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
+                              rows, cols, gems_left, exit_r, exit_c)
+
+        total = sum(
+            expectimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c)
+            for nr, nc in moves
+        )
+        return total / len(moves)  # uniform average over the sorcerer's legal moves
+
+    else:
+        # player's turn — collect any gem landed on, then let the sorcerer reply
+        moves = get_valid_moves(player_r, player_c, grid, rows, cols)
+        if not moves:
+            return expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
+                              rows, cols, gems_left, exit_r, exit_c)
+
+        min_eval = float("inf")
+        for nr, nc in moves:
+            new_gems = _apply_gem_pickup((nr, nc), gems_left)
+            ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                            rows, cols, new_gems, exit_r, exit_c)
+            ev += _hazard_penalty(grid[nr][nc])  # same hazard shaping as minimax()
+            min_eval = min(min_eval, ev)
         return min_eval
 
 
@@ -474,7 +529,7 @@ def get_best_sorcerer_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
         # oscillation -- but only when the move ISN'T already closing distance
         # on the player, so genuine forward pursuit is never blocked by history
         making_progress = manhattan_distance(nr, nc, player_r, player_c) < cur_dist
-        if avoid is not None and (nr, nc) in avoid and not making_progress:
+        if _revisits_without_progress((nr, nc), avoid, making_progress):
             ev -= REVISIT_PENALTY
         if ev > max_eval:
             max_eval = ev
@@ -496,23 +551,15 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
     beta = float("inf")
     cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
     for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
-        new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
+        new_gems = _apply_gem_pickup((nr, nc), gems_left)
         ev = minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
                      rows, cols, new_gems, exit_r, exit_c, alpha, beta)
-        # discourage stepping onto a hazard tile this turn, same weighting as
-        # the in-recursion penalty in minimax() so the immediate move and the
-        # lookahead agree with each other
-        landing_tile = grid[nr][nc]
-        if landing_tile == 'M':
-            ev += HAZARD_PENALTY_M
-        elif landing_tile == 'S':
-            ev += HAZARD_PENALTY_S
-        # penalise re-entering a recently-occupied cell to break pursuit/evasion
-        # oscillation -- but only when the move ISN'T already collecting a gem
-        # or reducing distance to the nearest remaining gem/exit
+
+        ev += _hazard_penalty(grid[nr][nc])
+
         new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
         making_progress = (nr, nc) in gems_left or new_dist < cur_dist
-        if avoid is not None and (nr, nc) in avoid and not making_progress:
+        if _revisits_without_progress((nr, nc), avoid, making_progress):
             ev += REVISIT_PENALTY
         if ev < min_eval:
             min_eval = ev
@@ -523,6 +570,31 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
         beta = min(beta, min_eval)
     return random.choice(best_moves)
 
+
+def get_best_player_move_expectimax(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                                    gems_left, exit_r, exit_c, rows, cols, depth=2, avoid=None):
+    best_moves = [(player_r, player_c)]
+    min_eval = float("inf")
+    cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
+
+    for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
+        new_gems = _apply_gem_pickup((nr, nc), gems_left)
+        ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
+                        rows, cols, new_gems, exit_r, exit_c)
+        ev += _hazard_penalty(grid[nr][nc])
+
+        new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
+        making_progress = (nr, nc) in gems_left or new_dist < cur_dist
+        if _revisits_without_progress((nr, nc), avoid, making_progress):
+            ev += REVISIT_PENALTY
+
+        if ev < min_eval:
+            min_eval = ev
+            best_moves = [(nr, nc)]
+        elif ev == min_eval:
+            best_moves.append((nr, nc))
+
+    return random.choice(best_moves)
 
 
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
@@ -561,8 +633,6 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
                 screen.blit(SPRITES['P'], rect)
             elif sorcerer_pos is not None and (r, c) == sorcerer_pos:
                 screen.blit(SPRITES['X'], rect)
-
-
 
 
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
