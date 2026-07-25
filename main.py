@@ -9,8 +9,7 @@ small_map = 5, 5
 medium_map = 15, 15
 large_map = 25, 25
 
-# choose bfs, dfs, ucs, astar, astar_euclidean, greedy, minimax
-ALGORITHM = "expectimax"
+ALGORITHM = "minimax"
 
 MAP_SIZE = large_map if ALGORITHM == "minimax" else medium_map
 
@@ -73,8 +72,6 @@ def construct_map(rows, cols):
 
 
 def get_valid_moves(r, c, grid, rows, cols):
-    """Used by minimax mode: unlike the pathfinders below, this has no notion
-    of 'visited' -- it's a per-turn legal-move query, not a search primitive."""
     valid_moves = []
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
     for dr, dc in directions:
@@ -83,21 +80,20 @@ def get_valid_moves(r, c, grid, rows, cols):
             valid_moves.append((nr, nc))
     return valid_moves
 
+def _find_tile(grid,row,cols,tile):
+    for r in range(row):
+        for c in range(cols):
+            if grid[r][c] == tile:
+                return r,c
+    return None
+
 
 def find_player(grid, rows, cols):
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == 'P':
-                return r, c
-    return None, None
+    return _find_tile(grid, rows, cols, 'P')
 
 
 def find_exit(grid, rows, cols):
-    for r in range(rows):
-        for c in range(cols):
-            if grid[r][c] == 'E':
-                return r, c
-    return None, None
+    return _find_tile(grid, rows, cols, 'E')
 
 
 def find_gems(grid, rows, cols):
@@ -428,8 +424,7 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
         max_eval = float("-inf")
         moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
         for nr, nc in moves:
-            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c,
-                         alpha, beta)
+            ev = minimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left, exit_r, exit_c, alpha, beta)
             max_eval = max(max_eval, ev)
             alpha = max(alpha, ev)
             if alpha >= beta:
@@ -461,44 +456,7 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
                 break
         if not moves:
             return minimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
-        return min_eval
-
-
-def expectimax(grid, depth, is_chance, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left, exit_r,
-               exit_c):
-    if (sorcerer_r, sorcerer_c) == (player_r, player_c): return CAPTURE_REWARD
-    if grid[player_r][player_c] == 'E' and len(gems_left) == 0: return -CAPTURE_REWARD
-    if depth == 0: return evaluate(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c)
-
-    if is_chance:
-        moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
-        if not moves:  # cornered sorcerer - stay put, let player move
-            return expectimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c, rows, cols, gems_left,
-                              exit_r, exit_c)
-        total = 0.0
-        for nr, nc in moves:
-            total += expectimax(grid, depth - 1, False, nr, nc, player_r, player_c, rows, cols, gems_left,
-                                exit_r, exit_c)
-        return total / len(moves)  # uniform average for sorcerers moves
-
-    else:
-        min_eval = float("inf")
-        moves = get_valid_moves(player_r, player_c, grid, rows, cols)
-        for nr, nc in moves:
-            new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
-            ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
-                            rows, cols, new_gems, exit_r, exit_c)
-            # same hazard shaping as minimax(), applied at every ply of the lookahead
-            landing_tile = grid[nr][nc]
-            if landing_tile == 'M':
-                ev += HAZARD_PENALTY_M
-            elif landing_tile == 'S':
-                ev += HAZARD_PENALTY_S
-            min_eval = min(min_eval, ev)
-        if not moves:
-            return expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, player_r, player_c,
-                              rows, cols, gems_left, exit_r, exit_c)
+                           rows, cols, gems_left, exit_r, exit_c,alpha, beta)
         return min_eval
 
 
@@ -566,41 +524,6 @@ def get_best_player_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
     return random.choice(best_moves)
 
 
-# player-side move selection in expectimax mode - alpha and beta isn't parsed and instead of calling minimax(), expectimax is called
-def get_best_player_move_expectimax(grid, sorcerer_r, sorcerer_c, player_r, player_c, gems_left, exit_r, exit_c, rows,
-                                    cols, depth=2, avoid=None):
-    best_moves = [(player_r, player_c)]
-    min_eval = float("inf")
-    cur_dist = multi_target_heuristic(player_r, player_c, gems_left, exit_r, exit_c)
-    for nr, nc in get_valid_moves(player_r, player_c, grid, rows, cols):
-        new_gems = tuple(g for g in gems_left if g != (nr, nc)) if (nr, nc) in gems_left else gems_left
-        ev = expectimax(grid, depth - 1, True, sorcerer_r, sorcerer_c, nr, nc,
-                        rows, cols, new_gems, exit_r, exit_c)
-        landing_tile = grid[nr][nc]
-        if landing_tile == 'M':
-            ev += HAZARD_PENALTY_M
-        elif landing_tile == 'S':
-            ev += HAZARD_PENALTY_S
-        new_dist = multi_target_heuristic(nr, nc, new_gems, exit_r, exit_c)
-        making_progress = (nr, nc) in gems_left or new_dist < cur_dist
-        if avoid is not None and (nr, nc) in avoid and not making_progress:
-            ev += REVISIT_PENALTY
-        if ev < min_eval:
-            min_eval = ev
-            best_moves = [(nr, nc)]
-        elif ev == min_eval:
-            best_moves.append((nr, nc))
-
-    return random.choice(best_moves)
-
-
-# sorcerers behaviour in expectimax mode: chooses randomly among legal moves.
-def get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols):
-    moves = get_valid_moves(sorcerer_r, sorcerer_c, grid, rows, cols)
-    if not moves:
-        return sorcerer_r, sorcerer_c
-    return random.choice(moves)
-
 
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
     for r in range(rows):
@@ -638,6 +561,8 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
                 screen.blit(SPRITES['P'], rect)
             elif sorcerer_pos is not None and (r, c) == sorcerer_pos:
                 screen.blit(SPRITES['X'], rect)
+
+
 
 
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
@@ -693,7 +618,7 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
 
     sorcerer_r, sorcerer_c = rows - 2, cols - 3
 
-    exit_r, exit_c = find_exit(my_map, rows, cols)
+    exit_r, exit_c = find_exit(my_map, rows, cols)  # exit is static — compute once
 
     game_over = False
 
@@ -731,62 +656,6 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
                         my_map, sorcerer_r, sorcerer_c, player_r, player_c,
                         remaining_gems, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
                         avoid=set(sorcerer_history)
-                    )
-
-                if (sorcerer_r, sorcerer_c) == (player_r, player_c):
-                    print("DEATH! The sorcerer caught you.")
-                    game_over = True
-
-        screen.fill((0, 0, 0))
-        render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, (player_r, player_c), (sorcerer_r, sorcerer_c))
-        pygame.display.flip()
-        clock.tick(10)
-
-    pygame.quit()
-    sys.exit()
-
-
-def run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
-    player_r, player_c = find_player(my_map, rows, cols)
-    my_map[player_r][player_c] = '.'  # erase the player from the map array
-
-    sorcerer_r, sorcerer_c = rows - 2, cols - 3
-
-    exit_r, exit_c = find_exit(my_map, rows, cols)
-
-    game_over = False
-
-    player_history = deque(maxlen=8)  # recent player cells, used to discourage oscillation
-
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        if not game_over:
-            gems_left = find_gems(my_map, rows, cols)
-
-            player_history.append((player_r, player_c))
-            player_r, player_c = get_best_player_move_expectimax(
-                my_map, sorcerer_r, sorcerer_c, player_r, player_c,
-                gems_left, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
-                avoid=set(player_history)
-            )
-
-            if my_map[player_r][player_c] == 'G':
-                my_map[player_r][player_c] = '.'
-
-            remaining_gems = find_gems(my_map, rows, cols)
-            if my_map[player_r][player_c] == 'E' and len(remaining_gems) == 0:
-                print("Success! you reached the stairs.")
-                game_over = True
-
-            if not game_over:
-                if (sorcerer_r, sorcerer_c) != (player_r, player_c):
-                    # chance-node assumption in get_best_player_move_expectimax
-                    sorcerer_r, sorcerer_c = get_random_sorcerer_move(
-                        my_map, sorcerer_r, sorcerer_c, rows, cols
                     )
 
                 if (sorcerer_r, sorcerer_c) == (player_r, player_c):
@@ -851,8 +720,6 @@ def main():
 
     if ALGORITHM == "minimax":
         run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
-    elif ALGORITHM == "expectimax":
-        run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
     elif ALGORITHM in PATHFINDERS:
         run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, ALGORITHM)
     else:
