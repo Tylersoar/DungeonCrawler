@@ -21,12 +21,23 @@ GEM_COST = 12.0  # reward per uncollected gem; > typical nearest-gem delta so co
 REVISIT_PENALTY = 50.0  # discourages re-entering recently-occupied cells to break oscillation
 HAZARD_PENALTY_M = 8.0  # 'M' tile penalty; scaled below GEM_COST so a short detour usually pays off
 HAZARD_PENALTY_S = 32.0  # 'S' tile penalty, ~4x HAZARD_PENALTY_M to mirror TILE_COSTS' M=5/S=20 ratio
+HAZARD_M_CHANCE = 0.15  # per-cell probability of spawning an 'M' hazard
+HAZARD_S_CHANCE = 0.20  # per-cell probability of spawning an 'S' hazard (includes M chance, so S is rarer)
 
 DIRECTIONS = {
     (-1, 0): "UP",
     (1, 0): "DOWN",
     (0, -1): "LEFT",
     (0, 1): "RIGHT",
+}
+
+TILE_COSTS = {
+    '.': 1,
+    'E': 1,
+    'G': 1,
+    'P': 1,
+    'M': 5,
+    'S': 20,
 }
 
 
@@ -61,9 +72,9 @@ def construct_map(rows, cols):
         for c in range(1, cols - 1):
             if arr[r][c] == '.' and (r, c) != (1, 1):
                 hazard_chance = random.random()
-                if hazard_chance < 0.15:
+                if hazard_chance < HAZARD_M_CHANCE:
                     arr[r][c] = 'M'
-                elif hazard_chance < 0.20:
+                elif hazard_chance < HAZARD_S_CHANCE:
                     arr[r][c] = 'S'
 
     arr[1][1] = 'G'
@@ -204,14 +215,6 @@ def ucs(grid, rows, cols):
     pq = [(0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
 
-    TILE_COSTS = {
-        '.': 1,
-        'E': 1,
-        'P': 1,
-        'M': 5,
-        'S': 20
-    }
-
     while pq:
         cost, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
 
@@ -243,7 +246,6 @@ def ucs(grid, rows, cols):
 def a_star(grid, rows, cols, distance_func=manhattan_distance):
     start_r, start_c = find_player(grid, rows, cols)
     exit_r, exit_c = find_exit(grid, rows, cols)
-
     initial_gems = find_gems(grid, rows, cols)
 
     if exit_r is None:
@@ -256,15 +258,6 @@ def a_star(grid, rows, cols, distance_func=manhattan_distance):
     pq = [(start_h, 0, start_r, start_c, initial_gems,
            [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
-
-    TILE_COSTS = {
-        '.': 1,
-        'E': 1,
-        'G': 1,
-        'P': 1,
-        'M': 5,
-        'S': 20
-    }
 
     while pq:
         f, g, r, c, gems_left, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
@@ -316,14 +309,6 @@ def greedy_search(grid, rows, cols):
 
     pq = [(start_h, 0, start_r, start_c, [])]  # priority queue that stores total_cost, current row/col, path so far
     visited = set()
-
-    TILE_COSTS = {
-        '.': 1,
-        'E': 1,
-        'P': 1,
-        'M': 5,
-        'S': 20
-    }
 
     while pq:
         f, g, r, c, path = heapq.heappop(pq)  # always grabs the tuple with the lowest cost
