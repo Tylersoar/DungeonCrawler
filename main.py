@@ -343,12 +343,12 @@ def greedy_search(grid, rows, cols):
 
 
 PATHFINDERS = {
-    "bfs": lambda grid, rows, cols: bfs(grid, rows, cols),
-    "dfs": lambda grid, rows, cols: dfs(grid, rows, cols),
-    "ucs": lambda grid, rows, cols: ucs(grid, rows, cols),
+    "bfs": bfs,
+    "dfs": dfs,
+    "ucs": ucs,
     "astar": lambda grid, rows, cols: a_star(grid, rows, cols, distance_func=manhattan_distance),
     "astar_euclidean": lambda grid, rows, cols: a_star(grid, rows, cols, distance_func=euclidean_distance),
-    "greedy": lambda grid, rows, cols: greedy_search(grid, rows, cols),
+    "greedy": greedy_search,
 }
 
 
@@ -390,9 +390,6 @@ def minimax(grid, depth, is_maximizing, sorcerer_r, sorcerer_c, player_r, player
             alpha = max(alpha, ev)
             if alpha >= beta:
                 break
-        if not moves:  # cornered sorcerer - stay put, let player move
-            return minimax(grid, depth - 1, False, sorcerer_r, sorcerer_c, player_r, player_c,
-                           rows, cols, gems_left, exit_r, exit_c, alpha, beta)
         return max_eval
 
     else:
@@ -556,6 +553,29 @@ def _initial_sorcerer_position(rows, cols):
     return rows - 2, cols - 3
 
 
+# Rendering section
+def _wall_sprite_key(r, c, rows, cols):
+    top, bottom = r == 0, r == rows - 1
+    left, right = c == 0, c == cols - 1
+    if top and left:
+        return 'WALL_TL'
+    if top and right:
+        return 'WALL_TR'
+    if bottom and left:
+        return 'WALL_BL'
+    if bottom and right:
+        return 'WALL_BR'
+    if top:
+        return 'WALL_T'
+    if bottom:
+        return 'WALL_B'
+    if left:
+        return 'WALL_L'
+    if right:
+        return 'WALL_R'
+    return '#'
+
+
 def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorcerer_pos=None):
     for r in range(rows):
         for c in range(cols):
@@ -565,27 +585,9 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
             tile_type = my_map[r][c]
             if tile_type != '.':
                 if tile_type == '#':
-                    if r == 0 and c == 0:
-                        sprite_to_draw = SPRITES['WALL_TL']
-                    elif r == 0 and c == cols - 1:
-                        sprite_to_draw = SPRITES['WALL_TR']
-                    elif r == rows - 1 and c == 0:
-                        sprite_to_draw = SPRITES['WALL_BL']
-                    elif r == rows - 1 and c == cols - 1:
-                        sprite_to_draw = SPRITES['WALL_BR']
-                    elif r == 0:
-                        sprite_to_draw = SPRITES['WALL_T']
-                    elif r == rows - 1:
-                        sprite_to_draw = SPRITES['WALL_B']
-                    elif c == 0:
-                        sprite_to_draw = SPRITES['WALL_L']
-                    elif c == cols - 1:
-                        sprite_to_draw = SPRITES['WALL_R']
-                    else:
-                        sprite_to_draw = SPRITES['#']
+                    sprite_to_draw = SPRITES[_wall_sprite_key(r, c, rows, cols)]
                 else:
                     sprite_to_draw = SPRITES.get(tile_type, SPRITES['.'])
-
                 screen.blit(sprite_to_draw, rect)
 
             if (r, c) == player_pos:
