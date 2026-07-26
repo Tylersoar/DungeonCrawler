@@ -9,9 +9,9 @@ small_map = 5, 5
 medium_map = 15, 15
 large_map = 25, 25
 
-ALGORITHM = "minimax"
+ALGORITHM = "expectimax"
 
-MAP_SIZE = large_map if ALGORITHM == "minimax" else medium_map
+MAP_SIZE = large_map if ALGORITHM in ("minimax", "expectimax") else medium_map
 
 EVADE_WEIGHT = 80.0  # sorcerer-pursuit / player-flee strength (inverse proximity)
 W_GOAL = 1.5  # player values collecting gems / reaching the exit
@@ -545,7 +545,8 @@ def _sorcerer_pursuit_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
                                   gems_left, exit_r, exit_c, rows, cols, depth, avoid)
 
 
-def _sorcerer_random_move(grid, sorcerer_r, sorcerer_c, rows, cols):
+def _sorcerer_random_move(grid, sorcerer_r, sorcerer_c, player_r, player_c,
+                           gems_left, exit_r, exit_c, rows, cols, depth, avoid):
     return get_random_sorcerer_move(grid, sorcerer_r, sorcerer_c, rows, cols)
 
 
