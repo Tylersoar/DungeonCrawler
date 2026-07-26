@@ -596,6 +596,7 @@ def render_map(screen, my_map, rows, cols, SPRITES, TILE_SIZE, player_pos, sorce
                 screen.blit(SPRITES['X'], rect)
 
 
+# Game loop
 def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, algorithm):
     path_fn = PATHFINDERS[algorithm]
     path = path_fn(my_map, rows, cols)
@@ -610,7 +611,7 @@ def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, 
                 running = False
 
         # If we have a path, and there are still moves left in it
-        if path and len(path) > 0:
+        if path:
             move = path.pop(0)  # Take the very first move off the list
 
             target_r, target_c = player_r, player_c
@@ -643,11 +644,11 @@ def run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, 
     sys.exit()
 
 
-def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
+def run_agent_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, player_move_fn, sorcerer_move_fn, ):
     player_r, player_c = find_player(my_map, rows, cols)
     my_map[player_r][player_c] = '.'  # erase the player from the static map array
 
-    sorcerer_r, sorcerer_c = rows - 2, cols - 3
+    sorcerer_r, sorcerer_c = _initial_sorcerer_position(rows, cols)
 
     exit_r, exit_c = find_exit(my_map, rows, cols)  # exit is static — compute once
 
@@ -666,7 +667,7 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
             gems_left = find_gems(my_map, rows, cols)
 
             player_history.append((player_r, player_c))
-            player_r, player_c = get_best_player_move(
+            player_r, player_c = player_move_fn(
                 my_map, sorcerer_r, sorcerer_c, player_r, player_c,
                 gems_left, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
                 avoid=set(player_history)
@@ -683,10 +684,10 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
             if not game_over:
                 if (sorcerer_r, sorcerer_c) != (player_r, player_c):
                     sorcerer_history.append((sorcerer_r, sorcerer_c))
-                    sorcerer_r, sorcerer_c = get_best_sorcerer_move(
+                    sorcerer_r, sorcerer_c = sorcerer_move_fn(
                         my_map, sorcerer_r, sorcerer_c, player_r, player_c,
                         remaining_gems, exit_r, exit_c, rows, cols, MINIMAX_DEPTH,
-                        avoid=set(sorcerer_history)
+                        set(sorcerer_history)
                     )
 
                 if (sorcerer_r, sorcerer_c) == (player_r, player_c):
@@ -700,6 +701,17 @@ def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
 
     pygame.quit()
     sys.exit()
+
+
+def run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
+    run_agent_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, player_move_fn=get_best_player_move,
+                   sorcerer_move_fn=_sorcerer_pursuit_move)
+
+
+def run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
+    run_agent_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE,
+                   player_move_fn=get_best_player_move_expectimax,
+                   sorcerer_move_fn=_sorcerer_random_move)
 
 
 def main():
@@ -750,7 +762,7 @@ def main():
     clock = pygame.time.Clock()
 
     if ALGORITHM == "minimax":
-        run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
+        run_agent_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
     elif ALGORITHM in PATHFINDERS:
         run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, ALGORITHM)
     else:
