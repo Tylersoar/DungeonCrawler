@@ -714,6 +714,41 @@ def run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE):
                    sorcerer_move_fn=_sorcerer_random_move)
 
 
+# Asset loading
+
+def load_spritesheet():
+    try:
+        dungeon_sheet = pygame.image.load("assets/Dungeon_Tileset.png").convert_alpha()
+        character_sheet = pygame.image.load("assets/Dungeon_Character.png").convert_alpha()
+        return dungeon_sheet, character_sheet
+    except FileNotFoundError:
+        print("Error: Couldn't find 'Dungeon_Tileset.png' or 'Character_Tileset.png'")
+        pygame.quit()
+        sys.exit()
+
+
+def load_sprites(dungeon_sheet, character_sheet, native_tiles, tile_size):
+    return {
+        '.': get_sprite(dungeon_sheet, 112, 0, native_tiles, native_tiles, tile_size),
+        '#': get_sprite(dungeon_sheet, 16, 0, native_tiles, native_tiles, tile_size),
+        'E': get_sprite(dungeon_sheet, 144, 48, native_tiles, native_tiles, tile_size),
+        'M': get_sprite(dungeon_sheet, 128, 96, native_tiles, native_tiles, tile_size),
+        'S': get_sprite(dungeon_sheet, 112, 112, native_tiles, native_tiles, tile_size),
+        'G': get_sprite(dungeon_sheet, 96, 128, native_tiles, native_tiles, tile_size),
+        'P': get_sprite(character_sheet, 64, 32, native_tiles, native_tiles, tile_size),
+        'X': get_sprite(character_sheet, 64, 48, native_tiles, native_tiles, tile_size),
+
+        'WALL_T': get_sprite(dungeon_sheet, 16, 0, native_tiles, native_tiles, tile_size),
+        'WALL_B': get_sprite(dungeon_sheet, 16, 64, native_tiles, native_tiles, tile_size),
+        'WALL_L': get_sprite(dungeon_sheet, 0, 16, native_tiles, native_tiles, tile_size),
+        'WALL_R': get_sprite(dungeon_sheet, 80, 16, native_tiles, native_tiles, tile_size),
+        'WALL_TL': get_sprite(dungeon_sheet, 0, 0, native_tiles, native_tiles, tile_size),
+        'WALL_TR': get_sprite(dungeon_sheet, 80, 0, native_tiles, native_tiles, tile_size),
+        'WALL_BL': get_sprite(dungeon_sheet, 0, 64, native_tiles, native_tiles, tile_size),
+        'WALL_BR': get_sprite(dungeon_sheet, 80, 64, native_tiles, native_tiles, tile_size)
+    }
+
+
 def main():
     pygame.init()
 
@@ -731,42 +766,19 @@ def main():
     pygame.display.set_caption(f'Dungeon Crawler - {ALGORITHM.upper()} Agent')
 
     # loads spritesheet and handles error if not found
-    try:
-        Dungeon_sprite_sheet = pygame.image.load("assets/Dungeon_Tileset.png").convert_alpha()
-        Character_sprite_sheet = pygame.image.load("assets/Dungeon_Character.png").convert_alpha()
-    except FileNotFoundError:
-        print("Error: Couldn't find 'Dungeon_Tileset.png' or 'Character_Tileset.png'")
-        pygame.quit()
-        sys.exit()
-
-    SPRITES = {
-        '.': get_sprite(Dungeon_sprite_sheet, 112, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        '#': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'E': get_sprite(Dungeon_sprite_sheet, 144, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'M': get_sprite(Dungeon_sprite_sheet, 128, 96, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'S': get_sprite(Dungeon_sprite_sheet, 112, 112, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'G': get_sprite(Dungeon_sprite_sheet, 96, 128, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'P': get_sprite(Character_sprite_sheet, 64, 32, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'X': get_sprite(Character_sprite_sheet, 64, 48, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-
-        'WALL_T': get_sprite(Dungeon_sprite_sheet, 16, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_B': get_sprite(Dungeon_sprite_sheet, 16, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_L': get_sprite(Dungeon_sprite_sheet, 0, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_R': get_sprite(Dungeon_sprite_sheet, 80, 16, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_TL': get_sprite(Dungeon_sprite_sheet, 0, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_TR': get_sprite(Dungeon_sprite_sheet, 80, 0, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_BL': get_sprite(Dungeon_sprite_sheet, 0, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE),
-        'WALL_BR': get_sprite(Dungeon_sprite_sheet, 80, 64, NATIVE_TILE, NATIVE_TILE, TILE_SIZE)
-    }
+    dungeon_sheet, character_sheet = load_spritesheet()
+    SPRITES = load_sprites(dungeon_sheet, character_sheet, NATIVE_TILE, TILE_SIZE)
 
     clock = pygame.time.Clock()
 
     if ALGORITHM == "minimax":
-        run_agent_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
+        run_minimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
+    elif ALGORITHM == "expectimax":
+        run_expectimax_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE)
     elif ALGORITHM in PATHFINDERS:
         run_pathfinding_mode(screen, clock, my_map, rows, cols, SPRITES, TILE_SIZE, ALGORITHM)
     else:
-        valid = ", ".join(list(PATHFINDERS.keys()) + ["minimax"])
+        valid = ", ".join(list(PATHFINDERS.keys()) + ["minimax", "expectimax"])
         print(f"Unknown ALGORITHM '{ALGORITHM}'. Valid options: {valid}")
         pygame.quit()
         sys.exit()
